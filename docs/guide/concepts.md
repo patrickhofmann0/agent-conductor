@@ -43,8 +43,9 @@ you configure is how they behave.
 | Reviewer      | Checks the result and answers with a structured verdict                     | Read the repository                   |
 
 Each role gets built-in instructions. You can add project-specific instructions or replace
-them per role, choose a model per role and adjust permissions — except that **no agent
-can ever run `git` or `gh`**.
+them per role, choose a model per role and add permission rules. Some rules are fixed for
+every agent and cannot be overridden: **no `git` or `gh`**, no subagents, no questions to
+a human, no reading `.env` files and no access outside the repository.
 
 ## Documents
 
@@ -97,6 +98,10 @@ conductor protects what makes the result trustworthy:
   every file the tester created or changed are protected. If the coder changes them,
   conductor reverts the change and reports it to the reviewer and back to the coder.
 - **Framework files are protected.** No agent may change `.conductor/`.
+- **Agents cannot escape their permissions.** Subagents are denied because OpenCode
+  gives them their own permissions instead of the session's. Questions to a human are
+  denied because nobody can answer during a run; if OpenCode still asks for a
+  permission, conductor rejects the request.
 
 ## Limits
 

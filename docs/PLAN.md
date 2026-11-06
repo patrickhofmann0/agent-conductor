@@ -42,7 +42,7 @@ ersten Commit an ein Satz **harter, maschinell durchgesetzter Leitplanken** (Kap
 | D2  | Runtime (Auslieferung)   | Node ≥ 22.12 kompatibel (Node 20 EOL); nur `node:*`-APIs, keine `Bun.*`-APIs (Lint)                                                                      |
 | D3  | Dev-Tooling              | Bun als Paketmanager, Script-Runner und Bundler (`bun build --target=node`)                                                                              |
 | D4  | Test-Runner              | Vitest (wegen Stryker-Support und Node-Kompatibilität)                                                                                                   |
-| D5  | OpenCode-Anbindung       | `@opencode-ai/sdk` + `opencode serve`, eine Session pro Phase                                                                                            |
+| D5  | OpenCode-Anbindung       | OpenCode V2: `@opencode/client` + privater `opencode serve` pro Run, eine Session pro Phase (ADR 0012)                                                   |
 | D6  | Rollen-Definition        | Prompts in der Framework-Config (`conductor.yaml`), mit eingebauten Defaults                                                                             |
 | D7  | Einsatzart               | Wiederverwendbares Tool für beliebige Ziel-Repos                                                                                                         |
 | D8  | Verteilung               | npm-Paket `agent-conductor`, CLI `conductor`                                                                                                             |
@@ -287,26 +287,23 @@ Ein `approve` bei roten Pflicht-Checks wird vom Framework **überschrieben** zu
 | **Tester**   | requirements, plan, Diff, ggf. Findings                          | Tests, statische Regeln, CI-Checks, `tester-notes.md`                                               | edit, bash (ohne git)                          |
 | **Reviewer** | requirements, plan, Diff, Check-Ergebnisse, Leitplanken-Verstöße | `review-<n>.json`                                                                                   | read-only, bash nur lesend                     |
 
-### 5.2 OpenCode-Permissions (Defaults, pro Rolle überschreibbar)
+### 5.2 OpenCode-Permissions (ADR 0012)
 
-```yaml
-po: { edit: deny, bash: deny, webfetch: allow }
-planner: { edit: deny, bash: deny, webfetch: allow }
-coder: { edit: allow, bash: { "*": allow, "git *": deny }, webfetch: deny }
-tester: { edit: allow, bash: { "*": allow, "git *": deny }, webfetch: deny }
-reviewer:
-  {
-    edit: deny,
-    bash: { "*": deny, "<read-only allowlist>": allow },
-    webfetch: deny,
-  }
-```
+V2-Regeln `{ action, resource, effect }`, die letzte passende Regel gewinnt. Pro Session:
+Rollen-Defaults, dann `roles.<role>.permissions`, dann feste Regeln.
+
+| Rolle             | `edit`  | `shell` | `webfetch`, `websearch` |
+| ----------------- | ------- | ------- | ----------------------- |
+| `po`, `planner`   | `deny`  | `deny`  | `allow`                 |
+| `coder`, `tester` | `allow` | `allow` | `deny`                  |
+| `reviewer`        | `deny`  | `deny`  | `deny`                  |
+
+Feste Regeln (nicht überschreibbar): `shell git *`, `shell gh *`, `subagent *`,
+`question *`, `read *.env`, `read *.env.*`, `external_directory *` → `deny`. `ask` ist in
+der Config nicht erlaubt; fragt OpenCode trotzdem, lehnt der Adapter ab.
 
 Ausnahme: Die Rollen PO, Planner und Reviewer schreiben ihre Artefakte nicht selbst.
 Sie liefern ihr Ergebnis als Antwort, das Framework schreibt die Datei.
-
-Zusätzlich wird für alle Rollen `git *`, `gh *` und `curl *github.com*` hart auf `deny`
-gesetzt; diese Regeln können per Config **nicht** überschrieben werden.
 
 ### 5.3 Git-Integritätsprüfung (nach jeder Phase)
 
@@ -416,7 +413,12 @@ roles: # optional, überschreibt Defaults
     prompt: |
       Additional project-specific instructions …
     promptMode: append # append | replace
-    permissions: { webfetch: allow }
+    permissions:
+      - {
+          action: webfetch,
+          resource: "https://docs.example.com/*",
+          effect: allow,
+        }
 ```
 
 - Schema in zod definiert, `conductor.schema.json` daraus generiert.
@@ -869,11 +871,9 @@ Aufgaben:
 
 Offene Punkte (vor der jeweiligen Phase zu klären):
 
-- Phase 2: Lokal ist OpenCode v2.x installiert, `@opencode-ai/sdk` steht auf 1.19.x und
-  es gibt neue Pakete (`@opencode-ai/client`, `@opencode/cli`). Vor dem Adapter klären,
-  welcher Client zur Server-API von v2 passt (ADR 0003).
+- Erledigt: OpenCode-Anbindung geklärt, siehe ADR 0012 (V2, `@opencode/client` 2.2.5, privater Server).
 - Lizenz des Pakets (derzeit `UNLICENSED`) vor dem ersten npm-Release festlegen.
-- Phase 2: Genaue Read-only-Allowlist für den Reviewer-bash.
+- Erledigt: Reviewer hat standardmäßig keine Shell; Projekte erlauben gezielt Befehle über `roles.reviewer.permissions` (ADR 0012).
 - Phase 4: Mindestanforderungen an den Devcontainer des Ziel-Repos (welche Base-Images werden unterstützt).
 - Phase 5: Repository-Owner/Namespace für npm, GHCR und Action.
 

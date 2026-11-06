@@ -64,8 +64,9 @@ roles:
 
 ### Models
 
-Models are written as `provider/model`, as configured in OpenCode. Without any model,
-OpenCode's default model is used.
+Models are written as `provider/model`, optionally with a variant such as
+`openai/gpt-5#high`, as configured in OpenCode. Without any model, OpenCode's default
+model is used.
 
 | Key               | Default          | Description                                |
 | ----------------- | ---------------- | ------------------------------------------ |
@@ -140,20 +141,41 @@ Globs match paths relative to the repository root and support `**`, `*`, `?` and
 Per-role settings under `roles.<role>`, where `<role>` is `po`, `planner`, `coder`,
 `tester` or `reviewer`.
 
-| Key                                 | Default  | Description                                                                    |
-| ----------------------------------- | -------- | ------------------------------------------------------------------------------ |
-| `roles.<role>.prompt`               | –        | Project-specific instructions for the role                                     |
-| `roles.<role>.promptMode`           | `append` | `append` adds the prompt to the built-in instructions, `replace` replaces them |
-| `roles.<role>.permissions.edit`     | per role | `allow` or `deny` editing files                                                |
-| `roles.<role>.permissions.bash`     | per role | `allow`, `deny`, or a map of command patterns to `allow`/`deny`                |
-| `roles.<role>.permissions.webfetch` | per role | `allow` or `deny` fetching web pages                                           |
+| Key                                   | Default  | Description                                                                       |
+| ------------------------------------- | -------- | --------------------------------------------------------------------------------- |
+| `roles.<role>.prompt`                 | –        | Project-specific instructions for the role                                        |
+| `roles.<role>.promptMode`             | `append` | `append` adds the prompt to the built-in instructions, `replace` replaces them    |
+| `roles.<role>.permissions`            | `[]`     | Ordered OpenCode permission rules added to the role's defaults                    |
+| `roles.<role>.permissions[].action`   | –        | OpenCode permission action, e.g. `shell`, `edit`, `read`, `webfetch`              |
+| `roles.<role>.permissions[].resource` | –        | Command, path or URL pattern; `*` matches anything                                |
+| `roles.<role>.permissions[].effect`   | –        | `allow` or `deny`. `ask` is not supported, because nobody can answer during a run |
 
-Default permissions:
+Permissions use [OpenCode's permission rules](https://opencode.ai/docs/permissions/):
+the last matching rule wins. For each agent, conductor combines three lists in this
+order:
 
-| Role              | `edit`  | `bash`  | `webfetch` |
-| ----------------- | ------- | ------- | ---------- |
-| `po`, `planner`   | `deny`  | `deny`  | `allow`    |
-| `coder`, `tester` | `allow` | `allow` | `deny`     |
-| `reviewer`        | `deny`  | `deny`  | `deny`     |
+1. **Role defaults:**
 
-`git` and `gh` are always denied, whatever you configure.
+   | Role              | `edit`  | `shell` | `webfetch`, `websearch` |
+   | ----------------- | ------- | ------- | ----------------------- |
+   | `po`, `planner`   | `deny`  | `deny`  | `allow`                 |
+   | `coder`, `tester` | `allow` | `allow` | `deny`                  |
+   | `reviewer`        | `deny`  | `deny`  | `deny`                  |
+
+2. **Your rules** from `roles.<role>.permissions`.
+3. **Fixed rules** that you cannot override: no `git` or `gh` commands, no subagents
+   (they would not inherit these rules), no questions to a human, no reading `.env`
+   files, and no access outside the repository.
+
+Example: let the reviewer run the tests, and keep the coder away from the database
+migrations:
+
+```yaml
+roles:
+  reviewer:
+    permissions:
+      - { action: shell, resource: "npm test *", effect: allow }
+  coder:
+    permissions:
+      - { action: edit, resource: "db/migrations/*", effect: deny }
+```
