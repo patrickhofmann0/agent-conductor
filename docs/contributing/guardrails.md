@@ -15,21 +15,22 @@ bun run verify:fast   # everything except build and Node smoke test
 
 ## Overview
 
-| Guardrail                                     | Tool                           | Command                          |
-| --------------------------------------------- | ------------------------------ | -------------------------------- |
-| [Formatting](#formatting)                     | Prettier                       | `bun run format:check`           |
-| [Markdown](#markdown-and-links)               | markdownlint-cli2              | `bun run docs:lint`              |
-| [Internal links](#markdown-and-links)         | remark-validate-links          | `bun run docs:links`             |
-| [Lint rules](#lint-rules)                     | ESLint                         | `bun run lint`                   |
-| [Types](#types)                               | TypeScript                     | `bun run typecheck`              |
-| [Architecture](#architecture)                 | dependency-cruiser             | `bun run arch`                   |
-| [Dead code](#dead-code)                       | knip                           | `bun run deadcode`               |
-| [Test pairs](#test-pairs)                     | `scripts/verify-test-pairs.ts` | `bun run test:pairs`             |
-| [Tests and coverage](#tests-and-coverage)     | Vitest                         | `bun run test`                   |
-| [Node compatibility](#node-compatibility)     | Bun build + Node               | `bun run build && bun run smoke` |
-| [Mutation testing](#mutation-testing)         | Stryker                        | `bun run mutation`               |
-| [Commit messages](#commit-messages)           | commitlint                     | `commit-msg` hook                |
-| [Guardrail protection](#guardrail-protection) | `scripts/verify-guardrails.ts` | CI only                          |
+| Guardrail                                     | Tool                             | Command                          |
+| --------------------------------------------- | -------------------------------- | -------------------------------- |
+| [Formatting](#formatting)                     | Prettier                         | `bun run format:check`           |
+| [Markdown](#markdown-and-links)               | markdownlint-cli2                | `bun run docs:lint`              |
+| [Internal links](#markdown-and-links)         | remark-validate-links            | `bun run docs:links`             |
+| [Lint rules](#lint-rules)                     | ESLint                           | `bun run lint`                   |
+| [Types](#types)                               | TypeScript                       | `bun run typecheck`              |
+| [Architecture](#architecture)                 | dependency-cruiser               | `bun run arch`                   |
+| [Dead code](#dead-code)                       | knip                             | `bun run deadcode`               |
+| [Test pairs](#test-pairs)                     | `scripts/verify-test-pairs.ts`   | `bun run test:pairs`             |
+| [Schema drift](#schema-drift)                 | `scripts/verify-schema-drift.ts` | `bun run schema:check`           |
+| [Tests and coverage](#tests-and-coverage)     | Vitest                           | `bun run test`                   |
+| [Node compatibility](#node-compatibility)     | Bun build + Node                 | `bun run build && bun run smoke` |
+| [Mutation testing](#mutation-testing)         | Stryker                          | `bun run mutation`               |
+| [Commit messages](#commit-messages)           | commitlint                       | `commit-msg` hook                |
+| [Guardrail protection](#guardrail-protection) | `scripts/verify-guardrails.ts`   | CI only                          |
 
 ## Formatting
 
