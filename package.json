@@ -23,6 +23,8 @@
     "prepare": "lefthook install",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "docs:lint": "markdownlint-cli2",
+    "docs:links": "remark . --quiet --frail --no-stdout",
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit",
     "arch": "depcruise src scripts --config .dependency-cruiser.cjs",
@@ -33,7 +35,7 @@
     "build": "bun build src/cli/index.ts --target=node --format=esm --outdir dist",
     "smoke": "node dist/index.js --version",
     "mutation": "stryker run",
-    "verify:fast": "bun run format:check && bun run lint && bun run typecheck && bun run arch && bun run deadcode && bun run test:pairs && bun run test",
+    "verify:fast": "bun run format:check && bun run docs:lint && bun run docs:links && bun run lint && bun run typecheck && bun run arch && bun run deadcode && bun run test:pairs && bun run test",
     "verify": "bun run verify:fast && bun run build && bun run smoke"
   },
   "devDependencies": {
@@ -52,7 +54,11 @@
     "eslint-config-prettier": "10.1.8",
     "knip": "6.44.1",
     "lefthook": "2.2.2",
+    "markdownlint-cli2": "0.24.0",
     "prettier": "3.9.10",
+    "remark-cli": "12.0.1",
+    "remark-gfm": "4.0.1",
+    "remark-validate-links": "13.1.0",
     "typescript": "6.0.3",
     "typescript-eslint": "8.72.1",
     "vitest": "5.1.0"

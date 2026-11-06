@@ -87,7 +87,7 @@ Die gesamte Orchestrierungslogik ist **reine, I/O-freie Logik** im `core/`. Alle
 Seiteneffekte laufen über Ports (Interfaces), die von Adaptern implementiert werden.
 Dadurch ist der Kern vollständig mit Fakes testbar und Mutation-Testing-fähig.
 
-```
+```text
 ┌──────────────────────────────────────────────────────────────┐
 │                        cli/  (Entry)                         │
 │        run · resume · init · validate-config                 │
@@ -107,7 +107,7 @@ Dadurch ist der Kern vollständig mit Fakes testbar und Mutation-Testing-fähig.
 
 ### 3.2 Verzeichnisstruktur
 
-```
+```text
 agent-conductor/
 ├── .devcontainer/              # Devcontainer für Framework-Entwicklung
 ├── .github/
@@ -215,7 +215,7 @@ interface StateStore {
 
 ### 4.1 Ablauf
 
-```
+```text
             ┌────────┐   gate?   ┌─────────┐   gate?
   input ──▶ │   PO   │ ───────▶  │ Planner │ ───────▶ ┐
             └────────┘           └─────────┘          │
@@ -243,7 +243,7 @@ interface StateStore {
 
 ### 4.2 Zustände
 
-```
+```text
 created → po_running → po_gate → planner_running → planner_gate
         → iter_coder → iter_tester → iter_checks → iter_review
         → (iter_coder | iter_tester | finalizing)
@@ -676,13 +676,31 @@ CI führt exakt `bun run verify` aus.
   `guardrails-change`
 - Ausführung per `gh api`, idempotent
 
+### 9.13 Dokumentation für Menschen (ADR 0011)
+
+- Englisch, Markdown im Repo, Diagramme als Mermaid, keine Doku-Website
+- `README.md`, `CONTRIBUTING.md`, `docs/contributing/` (Maintainer), `docs/guide/` (Nutzer)
+- `AGENTS.md` verweist auf `docs/contributing/`, dupliziert aber nicht
+- Generierbare Referenzen (Config-Referenz aus zod) werden generiert und Drift-geprüft
+- Leitplanken: `markdownlint-cli2` (verify + pre-commit), `remark-validate-links` für
+  interne Links/Anker (verify), lychee für externe Links (nightly, `docs-links.yml`)
+
+| Wann      | Doku                                                                                                                        |
+| --------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Phase 0   | `README.md`, `CONTRIBUTING.md`, `docs/contributing/{setup,workflow,guardrails,architecture,testing,working-with-agents}.md` |
+| Phase 1   | `docs/guide/concepts.md`, `docs/guide/configuration.md` (generiert)                                                         |
+| Phase 2   | `docs/guide/getting-started-local.md`, `docs/guide/security.md`                                                             |
+| Phase 3–4 | `docs/guide/getting-started-ci.md`                                                                                          |
+| Phase 5   | `docs/guide/troubleshooting.md`, `docs/contributing/release.md`, `CHANGELOG.md`                                             |
+
 ---
 
 ## 10. Implementierungsphasen
 
 Jede Phase = ein oder mehrere PRs, jeder PR mit grünem `bun run verify`.
 **Definition of Done pro Phase:** alle Akzeptanzkriterien erfüllt, Coverage- und
-Mutation-Schwellen gehalten, AGENTS.md/ADRs aktualisiert.
+Mutation-Schwellen gehalten, AGENTS.md/ADRs aktualisiert, **Doku für Menschen der Phase
+geschrieben bzw. aktualisiert (9.13)**.
 
 ### Phase 0 – Fundament & Leitplanken
 
@@ -704,6 +722,8 @@ Aufgaben:
 - [x] `AGENTS.md`, ADRs 0001–0010
 - [x] Hello-World-CLI (`conductor --version`) mit Test, Build, Node-Smoke-Test
 - [ ] Remote-Repo anlegen, pushen, `scripts/setup-github.sh` ausführen (manuell, Maintainer)
+- [x] Hook-Umgebung (`scripts/hook-env.sh`), Doku-Leitplanken, ADR 0011
+- [ ] Doku für Menschen Phase 0 (9.13)
 
 Akzeptanzkriterien:
 

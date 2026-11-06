@@ -1,0 +1,28 @@
+# GUARDRAIL FILE. Changes require the `guardrails-change` label. See docs/adr/0011.
+#
+# Internal links are checked on every run of `bun run verify`. External links are
+# checked here, nightly, so that unrelated outages do not block pull requests.
+name: docs-links
+
+on:
+  schedule:
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  external-links:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: lycheeverse/lychee-action@v2
+        with:
+          args: >-
+            --no-progress
+            --exclude-path node_modules
+            --exclude-path docs/adr/0000-template.md
+            "./**/*.md"
+          fail: true

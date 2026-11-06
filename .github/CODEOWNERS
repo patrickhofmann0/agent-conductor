@@ -11,6 +11,9 @@
 /stryker.config.*          @patrickhofmann0
 /lefthook.yml              @patrickhofmann0
 /commitlint.config.*       @patrickhofmann0
+/.markdownlint-cli2.jsonc  @patrickhofmann0
+/.remarkrc*                @patrickhofmann0
+/.remarkignore             @patrickhofmann0
 /package.json              @patrickhofmann0
 /.github/                  @patrickhofmann0
 /scripts/                  @patrickhofmann0
