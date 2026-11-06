@@ -741,14 +741,23 @@ Akzeptanzkriterien:
 
 Aufgaben:
 
-- [ ] zod-Schemas: Config, RunState, ReviewerVerdict, Findings; Schema-Generierung + Drift-Check
-- [ ] Config-Loader: YAML parsen, Defaults, Merge von Rollen-Prompts (`append`/`replace`), Duration-Parsing
-- [ ] Ports (3.4)
-- [ ] Pipeline-State-Machine (4.2) inkl. Gates, Resume-Einstieg in jeden Zustand
-- [ ] Loop-Policy: Routing, Iterationen, Override „approve bei roten Checks", Limits, `onLimit`
-- [ ] Guardrail-Policy: Glob-Matching, Ermittlung der Leitplanken-Menge, Verstoß → Finding
-- [ ] Prompt-Assembly: Default-Prompts pro Rolle (EN), Kontext-Injection (Requirements, Plan, Diff, Findings, Check-Ergebnisse), Ausgabesprache
-- [ ] Fakes für alle Ports in `test/fakes/`
+- [x] zod-Schemas: Config, RunState, ReviewerVerdict, Findings; Schema-Generierung + Drift-Check
+- [x] Config-Parsing (`parseConfig` validiert bereits geparste Daten): Defaults, Merge von Rollen-Prompts (`append`/`replace`), Duration-Parsing. YAML-Datei lesen folgt in Phase 2 (I/O)
+- [x] Ports (3.4); zusätzlich `RunStore`, `Publisher`, `Reporter`. `Forge` entfällt im Kern: Push und PR kapselt der `Publisher`
+- [x] Pipeline-State-Machine (4.2) inkl. Gates, Resume-Einstieg in jeden Zustand
+- [x] Loop-Policy: Routing, Iterationen, Override „approve bei roten Checks", Limits, `onLimit`
+- [x] Guardrail-Policy: Glob-Matching, Ermittlung der Leitplanken-Menge, Verstoß → Finding; `.conductor/**` immer geschützt (auch vor dem Tester)
+- [x] Prompt-Assembly: Default-Prompts pro Rolle (EN), Kontext-Injection (Requirements, Plan, Diff, Findings, Check-Ergebnisse), Ausgabesprache
+- [x] Fakes für alle Ports in `test/fakes/`, Szenario-Tests in `test/scenarios/`
+- [x] Doku: `docs/guide/concepts.md`, `docs/guide/configuration.md` (Vollständigkeit per Test gegen das JSON-Schema geprüft)
+
+Ergebnis: 445 Tests, Coverage 100 % Statements / 99 % Branches, Mutation-Score 98,6 %.
+
+Abweichungen vom Entwurf in Kapitel 4/7:
+
+- Zeitlimit zählt nur aktive Zeit (`activeMs`), nicht die Wartezeit an Gates.
+- `onLimit: ask` mit „continue" gewährt ein weiteres Budget derselben Größe (Iterationen, Kosten, Zeit).
+- Intermediate-Commits nutzen `chore(conductor): …`, damit Commit-Hooks der Ziel-Repos sie akzeptieren.
 
 Akzeptanzkriterien:
 

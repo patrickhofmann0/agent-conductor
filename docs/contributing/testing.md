@@ -13,9 +13,13 @@ Every source file needs a sibling test file, except `index.ts` (wiring only) and
 `*.types.ts` (types only). `test/` holds shared helpers:
 
 ```text
-test/fakes/   in-memory implementations of core ports
-test/e2e/     end-to-end tests against a sample repository (phase 5)
+test/fakes/      in-memory implementations of core ports, plus createTestEngine()
+test/scenarios/  whole pipeline runs against fakes (happy path, loops, limits, gates)
+test/e2e/        end-to-end tests against a sample repository (phase 5)
 ```
+
+Tests in `src/` may import from `test/fakes/`; shipped code may not (enforced by
+dependency-cruiser).
 
 ## Running tests
 
@@ -31,9 +35,12 @@ Tests run on Node.js through Vitest, not with `bun test`.
 
 - **Test behavior, not implementation.** Call the public function and assert on its
   result or on the calls it made to a port. Do not assert on private helpers.
-- **Prefer fakes over mocks.** For core code, use the fakes from `test/fakes/` (for
-  example a fake `Vcs` that records commits in memory). Fakes stay valid when internals
-  change; `vi.mock` setups often do not.
+- **Prefer fakes over mocks.** For core code, use `createTestEngine()` from
+  `test/fakes/test-engine.ts`. It wires fakes for every port: script agent answers per
+  role (`engine.agents.script("reviewer", { output })`), simulate file changes
+  (`engine.vcs.change(...)`), script gate and limit decisions, and inspect what was
+  committed, published and reported. Fakes stay valid when internals change; `vi.mock`
+  setups often do not.
 - **Assert precisely.** `toEqual` on the whole result is better than checking a single
   field. Mutation testing will point out assertions that are too weak.
 - **One scenario per test**, named as a sentence: `it("reverts coder changes to tester
