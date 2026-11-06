@@ -8,7 +8,7 @@
     "BUN_INSTALL": "/home/node/.bun"
   },
   "remoteEnv": {
-    "PATH": "/home/node/.bun/bin:/home/node/.opencode/bin:${containerEnv:PATH}"
+    "PATH": "/home/node/.bun/bin:${containerEnv:PATH}"
   },
   "onCreateCommand": "bash .devcontainer/on-create.sh",
   "postCreateCommand": "bun install --frozen-lockfile",
