@@ -50,7 +50,9 @@ files")`.
 - **Deterministic:** no real time, randomness or network in unit tests. Use the
   `Clock` port and fakes.
 - **Adapters** are tested against real but local resources where cheap (temporary git
-  repositories, a local HTTP server) and never against real AI models or GitHub.
+  repositories, a local HTTP server) and never against real AI models or GitHub. The
+  OpenCode adapter runs against `test/support/mock-opencode.ts`, a small stand-in for
+  the OpenCode HTTP API that records requests and can push events.
 
 ## Coverage
 
