@@ -1,12 +1,15 @@
 import { z } from "zod";
 
 import { durationSchema } from "./duration.js";
-import { permissionOverridesSchema } from "./permissions.js";
+import { permissionRuleSchema } from "./permissions.js";
 import { roleSchema } from "./role.js";
 
 const modelIdSchema = z
   .string()
-  .regex(/^[^/\s]+\/\S+$/, 'Use "provider/model", for example "openai/gpt-5".');
+  .regex(
+    /^[^/\s#]+\/[^\s#]+(#[^\s#]+)?$/,
+    'Use "provider/model" or "provider/model#variant", for example "openai/gpt-5#high".',
+  );
 
 const modelsSchema = z.strictObject({
   default: modelIdSchema.optional(),
@@ -45,7 +48,8 @@ const checksSchema = z.array(checkSchema).superRefine((checks, ctx) => {
 const roleConfigSchema = z.strictObject({
   prompt: z.string().min(1).optional(),
   promptMode: z.enum(["append", "replace"]).default("append"),
-  permissions: permissionOverridesSchema.optional(),
+  /** Appended to the role's default rules; the framework's hard rules always come last. */
+  permissions: z.array(permissionRuleSchema).default([]),
 });
 
 const onLimitSchema = z.enum(["draft_pr", "fail", "ask"]);

@@ -1,96 +1,117 @@
 import { describe, expect, it } from "vitest";
 
-import { HARD_DENIED_COMMANDS, effectivePermissions } from "./permissions.js";
+import { HARD_RULES, effectivePermissions } from "./permissions.js";
 
-const DENY_GIT = { git: "deny", "git *": "deny", gh: "deny", "gh *": "deny" };
+import type { PermissionRuleset } from "../schemas/permissions.js";
+
+/** Evaluates rules like OpenCode: the last matching rule wins. */
+function decide(
+  rules: PermissionRuleset,
+  action: string,
+  resource: string,
+): string | undefined {
+  const matches = (pattern: string, value: string): boolean =>
+    new RegExp(
+      `^${pattern.replace(/[.+^$()|[\]\\{}]/g, "\\$&").replace(/\*/g, ".*")}$`,
+    ).test(value) ||
+    (pattern.endsWith(" *") && value === pattern.slice(0, -2));
+  return rules
+    .filter(
+      (rule) =>
+        matches(rule.action, action) && matches(rule.resource, resource),
+    )
+    .at(-1)?.effect;
+}
 
 describe("effectivePermissions defaults", () => {
   it.each(["po", "planner"] as const)(
-    "lets %s read and browse, but not edit or run commands",
+    "lets %s research but not edit or run commands",
     (role) => {
-      expect(effectivePermissions(role)).toEqual({
-        edit: "deny",
-        bash: { "*": "deny", ...DENY_GIT },
-        webfetch: "allow",
-      });
+      const rules = effectivePermissions(role);
+
+      expect(decide(rules, "edit", "src/a.ts")).toBe("deny");
+      expect(decide(rules, "shell", "ls")).toBe("deny");
+      expect(decide(rules, "webfetch", "https://example.com")).toBe("allow");
+      expect(decide(rules, "websearch", "csv rfc")).toBe("allow");
     },
   );
 
   it.each(["coder", "tester"] as const)(
-    "lets %s edit and run commands except git",
+    "lets %s edit and run commands, offline",
     (role) => {
-      expect(effectivePermissions(role)).toEqual({
-        edit: "allow",
-        bash: { "*": "allow", ...DENY_GIT },
-        webfetch: "deny",
-      });
+      const rules = effectivePermissions(role);
+
+      expect(decide(rules, "edit", "src/a.ts")).toBe("allow");
+      expect(decide(rules, "shell", "npm test")).toBe("allow");
+      expect(decide(rules, "webfetch", "https://example.com")).toBe("deny");
+      expect(decide(rules, "websearch", "x")).toBe("deny");
     },
   );
 
   it("keeps the reviewer read-only and offline", () => {
-    expect(effectivePermissions("reviewer")).toEqual({
-      edit: "deny",
-      bash: { "*": "deny", ...DENY_GIT },
-      webfetch: "deny",
-    });
+    const rules = effectivePermissions("reviewer");
+
+    expect(decide(rules, "edit", "src/a.ts")).toBe("deny");
+    expect(decide(rules, "shell", "cat a")).toBe("deny");
+    expect(decide(rules, "webfetch", "https://example.com")).toBe("deny");
+    expect(decide(rules, "websearch", "x")).toBe("deny");
   });
 });
 
-describe("effectivePermissions overrides", () => {
-  it("applies overrides per tool", () => {
-    expect(
-      effectivePermissions("coder", { webfetch: "allow", edit: "deny" }),
-    ).toEqual({
-      edit: "deny",
-      bash: { "*": "allow", ...DENY_GIT },
-      webfetch: "allow",
-    });
+describe("effectivePermissions hard rules", () => {
+  it.each([
+    ["shell", "git"],
+    ["shell", "git commit -m x"],
+    ["shell", "gh pr create"],
+    ["subagent", "general"],
+    ["question", "*"],
+    ["read", ".env"],
+    ["read", "config/.env.local"],
+    ["external_directory", "/home/user/*"],
+  ])("denies %s %s for every role", (action, resource) => {
+    for (const role of [
+      "po",
+      "planner",
+      "coder",
+      "tester",
+      "reviewer",
+    ] as const) {
+      expect(decide(effectivePermissions(role), action, resource)).toBe("deny");
+    }
   });
 
-  it("accepts bash pattern maps and appends the hard denies last", () => {
-    const permissions = effectivePermissions("reviewer", {
-      bash: { "*": "deny", "ls *": "allow" },
-    });
+  it("puts project rules between defaults and hard rules", () => {
+    const project = [
+      { action: "shell", resource: "npm publish *", effect: "deny" as const },
+    ];
 
-    expect(permissions.bash).toEqual({
-      "*": "deny",
-      "ls *": "allow",
-      ...DENY_GIT,
-    });
-    expect(Object.keys(permissions.bash).slice(-4)).toEqual(
-      Object.keys(HARD_DENIED_COMMANDS),
-    );
-  });
+    const rules = effectivePermissions("coder", project);
 
-  it("cannot allow git or gh", () => {
-    const permissions = effectivePermissions("coder", {
-      bash: { "git *": "allow", "gh *": "allow", git: "allow", "*": "allow" },
-    });
-
-    expect(permissions.bash).toEqual({ "*": "allow", ...DENY_GIT });
-  });
-
-  it("moves user entries for git and gh behind the hard denies, because the last match wins", () => {
-    const permissions = effectivePermissions("coder", {
-      bash: { "git *": "allow", "*": "allow", "npm *": "deny" },
-    });
-
-    expect(Object.entries(permissions.bash)).toEqual([
-      ["*", "allow"],
-      ["npm *", "deny"],
-      ["git", "deny"],
-      ["git *", "deny"],
-      ["gh", "deny"],
-      ["gh *", "deny"],
+    expect(rules.slice(-HARD_RULES.length - 1)).toEqual([
+      ...project,
+      ...HARD_RULES,
     ]);
+    expect(decide(rules, "shell", "npm publish --tag next")).toBe("deny");
   });
 
-  it("does not mutate the defaults", () => {
-    effectivePermissions("coder", { bash: { "npm *": "deny" } });
+  it("cannot be overridden by project rules", () => {
+    const rules = effectivePermissions("coder", [
+      { action: "shell", resource: "git *", effect: "allow" },
+      { action: "subagent", resource: "*", effect: "allow" },
+      { action: "*", resource: "*", effect: "allow" },
+    ]);
 
-    expect(effectivePermissions("coder").bash).toEqual({
-      "*": "allow",
-      ...DENY_GIT,
-    });
+    expect(decide(rules, "shell", "git push")).toBe("deny");
+    expect(decide(rules, "subagent", "general")).toBe("deny");
+    expect(decide(rules, "read", ".env")).toBe("deny");
+  });
+
+  it("lets project rules adjust role defaults", () => {
+    const rules = effectivePermissions("reviewer", [
+      { action: "shell", resource: "npm test", effect: "allow" },
+    ]);
+
+    expect(decide(rules, "shell", "npm test")).toBe("allow");
+    expect(decide(rules, "shell", "rm -rf /")).toBe("deny");
   });
 });

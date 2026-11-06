@@ -51,6 +51,7 @@ describe("configSchema defaults", () => {
     expect(config.roles.coder).toEqual({
       prompt: "Be brief.",
       promptMode: "append",
+      permissions: [],
     });
     expect(config.roles.tester).toBeUndefined();
   });
@@ -58,7 +59,7 @@ describe("configSchema defaults", () => {
   it("keeps explicit values", () => {
     const config = configSchema.parse({
       language: "de-DE",
-      models: { default: "openai/gpt-5", reviewer: "openai/o3" },
+      models: { default: "openai/gpt-5", reviewer: "openai/o3#high" },
       gates: { po: false },
       loop: { maxIterations: 5, onLimit: "ask" },
       limits: { phaseTimeout: "5m", maxCostUsd: 2.5 },
@@ -67,7 +68,7 @@ describe("configSchema defaults", () => {
     expect(config.language).toBe("de-DE");
     expect(config.models).toEqual({
       default: "openai/gpt-5",
-      reviewer: "openai/o3",
+      reviewer: "openai/o3#high",
     });
     expect(config.gates).toEqual({ po: false, planner: true });
     expect(config.loop).toEqual({ maxIterations: 5, onLimit: "ask" });
@@ -114,6 +115,22 @@ describe("configSchema validation", () => {
       { checks: [{ name: "test!", command: "x" }] },
     ],
     ["three-letter language", { language: "deu" }],
+    ["model with an empty variant", { models: { default: "openai/gpt-5#" } }],
+    ["model with two variants", { models: { default: "openai/gpt-5#a#b" } }],
+    [
+      "V1-style permission overrides",
+      { roles: { coder: { permissions: { bash: "allow" } } } },
+    ],
+    [
+      "a permission rule that asks",
+      {
+        roles: {
+          coder: {
+            permissions: [{ action: "shell", resource: "*", effect: "ask" }],
+          },
+        },
+      },
+    ],
     ["empty label", { github: { labels: { approved: "" } } }],
   ])("rejects %s", (_name, input) => {
     expect(configSchema.safeParse(input).success).toBe(false);
@@ -122,7 +139,7 @@ describe("configSchema validation", () => {
   it.each([
     [
       { models: { default: "gpt-5" } },
-      'Use "provider/model", for example "openai/gpt-5".',
+      'Use "provider/model" or "provider/model#variant", for example "openai/gpt-5#high".',
     ],
     [
       { checks: [{ name: "Unit", command: "x" }] },

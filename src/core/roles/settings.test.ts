@@ -7,6 +7,7 @@ import {
 } from "../prompts/system.js";
 import { configSchema } from "../schemas/config.js";
 
+import { effectivePermissions } from "./permissions.js";
 import { roleSettings } from "./settings.js";
 
 const config = (input: unknown = {}) => configSchema.parse(input);
@@ -69,13 +70,26 @@ describe("roleSettings", () => {
     expect("model" in roleSettings(config(), "coder")).toBe(false);
   });
 
-  it("applies permission overrides", () => {
+  it("applies the project's permission rules", () => {
+    const rule = {
+      action: "webfetch",
+      resource: "https://docs.example.com/*",
+      effect: "allow" as const,
+    };
+
     const settings = roleSettings(
-      config({ roles: { reviewer: { permissions: { webfetch: "allow" } } } }),
+      config({ roles: { reviewer: { permissions: [rule] } } }),
       "reviewer",
     );
 
-    expect(settings.permissions.webfetch).toBe("allow");
-    expect(settings.permissions.edit).toBe("deny");
+    expect(settings.permissions).toEqual(
+      effectivePermissions("reviewer", [rule]),
+    );
+  });
+
+  it("uses the role defaults without project rules", () => {
+    expect(roleSettings(config(), "coder").permissions).toEqual(
+      effectivePermissions("coder"),
+    );
   });
 });

@@ -1,4 +1,4 @@
-import type { EffectivePermissions } from "../schemas/permissions.js";
+import type { PermissionRuleset } from "../schemas/permissions.js";
 import type { Role } from "../schemas/role.js";
 
 export interface AgentRunRequest {
@@ -7,9 +7,9 @@ export interface AgentRunRequest {
   readonly system: string;
   /** The task for this run. */
   readonly prompt: string;
-  /** "provider/model"; the harness default is used when absent. */
+  /** "provider/model" or "provider/model#variant"; the harness default is used when absent. */
   readonly model?: string;
-  readonly permissions: EffectivePermissions;
+  readonly permissions: PermissionRuleset;
   readonly timeoutMs: number;
   /** Continue an existing session instead of starting a new one. */
   readonly sessionId?: string;

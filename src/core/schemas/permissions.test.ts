@@ -1,42 +1,27 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  bashPermissionSchema,
-  permissionOverridesSchema,
-} from "./permissions.js";
+import { permissionRuleSchema } from "./permissions.js";
 
-describe("bashPermissionSchema", () => {
-  it.each(["allow", "deny"])("accepts the shorthand %s", (value) => {
-    expect(bashPermissionSchema.parse(value)).toBe(value);
+describe("permissionRuleSchema", () => {
+  it.each(["allow", "deny"])("accepts the effect %s", (effect) => {
+    const rule = { action: "shell", resource: "npm *", effect };
+
+    expect(permissionRuleSchema.parse(rule)).toEqual(rule);
   });
 
-  it("accepts a pattern map", () => {
-    expect(
-      bashPermissionSchema.parse({ "*": "deny", "ls *": "allow" }),
-    ).toEqual({
-      "*": "deny",
-      "ls *": "allow",
-    });
-  });
-
-  it.each([["ask"], [{ "*": "ask" }], [{ "": "allow" }]])(
-    "rejects %j",
-    (value) => {
-      expect(bashPermissionSchema.safeParse(value).success).toBe(false);
-    },
-  );
-});
-
-describe("permissionOverridesSchema", () => {
-  it("accepts partial overrides", () => {
-    expect(permissionOverridesSchema.parse({ webfetch: "allow" })).toEqual({
-      webfetch: "allow",
-    });
-  });
-
-  it("rejects unknown tools", () => {
-    expect(
-      permissionOverridesSchema.safeParse({ shell: "allow" }).success,
-    ).toBe(false);
+  it.each([
+    [
+      "ask, because nobody can answer",
+      { action: "shell", resource: "*", effect: "ask" },
+    ],
+    ["an empty action", { action: "", resource: "*", effect: "deny" }],
+    ["an empty resource", { action: "shell", resource: "", effect: "deny" }],
+    ["a missing effect", { action: "shell", resource: "*" }],
+    [
+      "unknown keys",
+      { action: "shell", resource: "*", effect: "deny", note: "x" },
+    ],
+  ])("rejects %s", (_name, rule) => {
+    expect(permissionRuleSchema.safeParse(rule).success).toBe(false);
   });
 });

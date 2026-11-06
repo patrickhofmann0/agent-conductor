@@ -1,65 +1,69 @@
 import type {
-  EffectivePermissions,
-  Permission,
-  PermissionOverrides,
+  PermissionRule,
+  PermissionRuleset,
 } from "../schemas/permissions.js";
 import type { Role } from "../schemas/role.js";
 
-type BashSetting = Permission | Readonly<Record<string, Permission>>;
-
-interface RolePermissionDefaults {
-  readonly edit: Permission;
-  readonly bash: BashSetting;
-  readonly webfetch: Permission;
+function rule(
+  action: string,
+  resource: string,
+  effect: PermissionRule["effect"],
+): PermissionRule {
+  return { action, resource, effect };
 }
 
-const READ_ONLY: RolePermissionDefaults = {
-  edit: "deny",
-  bash: "deny",
-  webfetch: "deny",
-};
-const WRITER: RolePermissionDefaults = {
-  edit: "allow",
-  bash: "allow",
-  webfetch: "deny",
-};
+const READ_ONLY: PermissionRuleset = [
+  rule("edit", "*", "deny"),
+  rule("shell", "*", "deny"),
+  rule("webfetch", "*", "deny"),
+  rule("websearch", "*", "deny"),
+];
 
-const DEFAULT_PERMISSIONS: Readonly<Record<Role, RolePermissionDefaults>> = {
-  po: { ...READ_ONLY, webfetch: "allow" },
-  planner: { ...READ_ONLY, webfetch: "allow" },
+const RESEARCHER: PermissionRuleset = [
+  rule("edit", "*", "deny"),
+  rule("shell", "*", "deny"),
+  rule("webfetch", "*", "allow"),
+  rule("websearch", "*", "allow"),
+];
+
+const WRITER: PermissionRuleset = [
+  rule("edit", "*", "allow"),
+  rule("shell", "*", "allow"),
+  rule("webfetch", "*", "deny"),
+  rule("websearch", "*", "deny"),
+];
+
+const DEFAULT_RULES: Readonly<Record<Role, PermissionRuleset>> = {
+  po: RESEARCHER,
+  planner: RESEARCHER,
   coder: WRITER,
   tester: WRITER,
   reviewer: READ_ONLY,
 };
 
 /**
- * Commands no agent may run, regardless of configuration (ADR 0006). They are
- * appended last so they take precedence over any user pattern.
+ * Rules appended after everything else, so no configuration can override them
+ * (OpenCode uses the last matching rule).
  */
-export const HARD_DENIED_COMMANDS: Readonly<Record<string, Permission>> = {
-  git: "deny",
-  "git *": "deny",
-  gh: "deny",
-  "gh *": "deny",
-};
+export const HARD_RULES: PermissionRuleset = [
+  // Only the framework touches version control (ADR 0006).
+  rule("shell", "git *", "deny"),
+  rule("shell", "gh *", "deny"),
+  // Subagents use their own permissions, not the session's.
+  rule("subagent", "*", "deny"),
+  // Nobody can answer a question during a run.
+  rule("question", "*", "deny"),
+  // Secrets stay out of model context.
+  rule("read", "*.env", "deny"),
+  rule("read", "*.env.*", "deny"),
+  // Agents stay inside the repository.
+  rule("external_directory", "*", "deny"),
+];
 
-function bashPatterns(setting: BashSetting): Record<string, Permission> {
-  const patterns =
-    typeof setting === "string" ? { "*": setting } : { ...setting };
-  for (const command of Object.keys(HARD_DENIED_COMMANDS)) {
-    Reflect.deleteProperty(patterns, command);
-  }
-  return { ...patterns, ...HARD_DENIED_COMMANDS };
-}
-
+/** Role defaults, then the project's rules, then the hard rules. */
 export function effectivePermissions(
   role: Role,
-  overrides: PermissionOverrides = {},
-): EffectivePermissions {
-  const defaults = DEFAULT_PERMISSIONS[role];
-  return {
-    edit: overrides.edit ?? defaults.edit,
-    bash: bashPatterns(overrides.bash ?? defaults.bash),
-    webfetch: overrides.webfetch ?? defaults.webfetch,
-  };
+  projectRules: PermissionRuleset = [],
+): PermissionRuleset {
+  return [...DEFAULT_RULES[role], ...projectRules, ...HARD_RULES];
 }

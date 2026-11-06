@@ -33,7 +33,7 @@ describe("configuration reference", () => {
   it("finds the keys of the schema", () => {
     expect(paths).toContain("loop.maxIterations");
     expect(paths).toContain("checks[].timeout");
-    expect(paths).toContain("roles.<role>.permissions.bash");
+    expect(paths).toContain("roles.<role>.permissions[].action");
   });
 
   it("documents every configuration key", () => {

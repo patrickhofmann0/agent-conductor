@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { createTestEngine, RUN_ID } from "../fakes/test-engine.js";
 import { startRun } from "../../src/core/pipeline/engine.js";
+import { HARD_RULES } from "../../src/core/roles/permissions.js";
 
 const input = {
   kind: "issue" as const,
@@ -67,16 +68,21 @@ describe("scenario: happy path", () => {
     expect(state.costUsd).toBeCloseTo(0.5);
   });
 
-  it("never lets an agent use git", async () => {
-    const engine = createTestEngine();
+  it("ends every agent's permissions with the hard rules", async () => {
+    const engine = createTestEngine({
+      roles: {
+        coder: {
+          permissions: [
+            { action: "shell", resource: "git *", effect: "allow" },
+          ],
+        },
+      },
+    });
 
     await startRun(engine.ctx, { runId: RUN_ID, input });
 
     for (const request of engine.agents.requests) {
-      expect(request.permissions.bash).toMatchObject({
-        "git *": "deny",
-        "gh *": "deny",
-      });
+      expect(request.permissions.slice(-HARD_RULES.length)).toEqual(HARD_RULES);
     }
   });
 });

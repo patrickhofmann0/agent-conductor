@@ -6,13 +6,13 @@ import {
 } from "../prompts/system.js";
 
 import type { Config } from "../schemas/config.js";
-import type { EffectivePermissions } from "../schemas/permissions.js";
+import type { PermissionRuleset } from "../schemas/permissions.js";
 import type { Role } from "../schemas/role.js";
 
 export interface RoleSettings {
   readonly system: string;
   readonly model?: string;
-  readonly permissions: EffectivePermissions;
+  readonly permissions: PermissionRuleset;
 }
 
 function rolePrompt(config: Config, role: Role): string {

@@ -21,27 +21,27 @@
       "properties": {
         "default": {
           "type": "string",
-          "pattern": "^[^/\\s]+\\/\\S+$"
+          "pattern": "^[^/\\s#]+\\/[^\\s#]+(#[^\\s#]+)?$"
         },
         "po": {
           "type": "string",
-          "pattern": "^[^/\\s]+\\/\\S+$"
+          "pattern": "^[^/\\s#]+\\/[^\\s#]+(#[^\\s#]+)?$"
         },
         "planner": {
           "type": "string",
-          "pattern": "^[^/\\s]+\\/\\S+$"
+          "pattern": "^[^/\\s#]+\\/[^\\s#]+(#[^\\s#]+)?$"
         },
         "coder": {
           "type": "string",
-          "pattern": "^[^/\\s]+\\/\\S+$"
+          "pattern": "^[^/\\s#]+\\/[^\\s#]+(#[^\\s#]+)?$"
         },
         "tester": {
           "type": "string",
-          "pattern": "^[^/\\s]+\\/\\S+$"
+          "pattern": "^[^/\\s#]+\\/[^\\s#]+(#[^\\s#]+)?$"
         },
         "reviewer": {
           "type": "string",
-          "pattern": "^[^/\\s]+\\/\\S+$"
+          "pattern": "^[^/\\s#]+\\/[^\\s#]+(#[^\\s#]+)?$"
         }
       },
       "additionalProperties": false
@@ -229,49 +229,34 @@
             ]
           },
           "permissions": {
-            "type": "object",
-            "properties": {
-              "edit": {
-                "type": "string",
-                "enum": [
-                  "allow",
-                  "deny"
-                ]
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "action": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "resource": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "effect": {
+                  "type": "string",
+                  "enum": [
+                    "allow",
+                    "deny"
+                  ]
+                }
               },
-              "bash": {
-                "anyOf": [
-                  {
-                    "type": "string",
-                    "enum": [
-                      "allow",
-                      "deny"
-                    ]
-                  },
-                  {
-                    "type": "object",
-                    "propertyNames": {
-                      "type": "string",
-                      "minLength": 1
-                    },
-                    "additionalProperties": {
-                      "type": "string",
-                      "enum": [
-                        "allow",
-                        "deny"
-                      ]
-                    }
-                  }
-                ]
-              },
-              "webfetch": {
-                "type": "string",
-                "enum": [
-                  "allow",
-                  "deny"
-                ]
-              }
-            },
-            "additionalProperties": false
+              "required": [
+                "action",
+                "resource",
+                "effect"
+              ],
+              "additionalProperties": false
+            }
           }
         },
         "additionalProperties": false

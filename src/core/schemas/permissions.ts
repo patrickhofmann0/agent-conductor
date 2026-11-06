@@ -1,30 +1,23 @@
 import { z } from "zod";
 
-const permissionSchema = z.enum(["allow", "deny"]);
-
-export type Permission = z.infer<typeof permissionSchema>;
-
-/** Either one permission for all commands, or command patterns mapped to permissions. */
-export const bashPermissionSchema = z.union([
-  permissionSchema,
-  z.record(z.string().min(1), permissionSchema),
-]);
-
-/** Permission overrides for a role, as written in conductor.yaml. */
-export const permissionOverridesSchema = z.strictObject({
-  edit: permissionSchema.optional(),
-  bash: bashPermissionSchema.optional(),
-  webfetch: permissionSchema.optional(),
-});
-
-export type PermissionOverrides = z.infer<typeof permissionOverridesSchema>;
+/**
+ * Effects conductor accepts. OpenCode also knows "ask", but there is no human
+ * to answer during a run, so it is not allowed here.
+ */
+const permissionEffectSchema = z.enum(["allow", "deny"]);
 
 /**
- * Fully resolved permissions passed to the agent harness.
- * `bash` patterns are ordered; later entries take precedence.
+ * One OpenCode V2 permission rule. `action` is a tool permission action such
+ * as "shell", "edit", "read" or "webfetch"; `resource` is the command, path or
+ * URL pattern. In a rule list the last matching rule wins.
  */
-export interface EffectivePermissions {
-  readonly edit: Permission;
-  readonly bash: Readonly<Record<string, Permission>>;
-  readonly webfetch: Permission;
-}
+export const permissionRuleSchema = z.strictObject({
+  action: z.string().min(1),
+  resource: z.string().min(1),
+  effect: permissionEffectSchema,
+});
+
+export type PermissionRule = z.infer<typeof permissionRuleSchema>;
+
+/** Ordered rules; later rules take precedence. */
+export type PermissionRuleset = readonly PermissionRule[];
