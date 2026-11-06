@@ -16,8 +16,9 @@ Containers extension, JetBrains Gateway) or the
    npx @devcontainers/cli exec --workspace-folder . bash
    ```
 
-2. On first creation the container installs the pinned Bun version, OpenCode and the
-   GitHub CLI (`.devcontainer/on-create.sh`), then runs `bun install`.
+2. On first creation the container installs the pinned Bun version, OpenCode V2
+   (`@opencode/cli` from npm) and the GitHub CLI (`.devcontainer/on-create.sh`), then runs
+   `bun install`.
 3. Run `bun run verify`.
 
 The container is based on `mcr.microsoft.com/devcontainers/typescript-node:22` and runs
@@ -37,7 +38,9 @@ as user `node`.
 4. `bun run verify`
 
 Optional: the [GitHub CLI](https://cli.github.com) (`gh`) for the repository setup
-script and OpenCode for trying conductor end to end.
+script, and OpenCode V2 for trying conductor end to end. Install OpenCode with
+`npm install --global @opencode/cli@2.2.5`; the `curl` installer from opencode.ai still
+installs V1 (see ADR 0012).
 
 ## Git hooks
 
