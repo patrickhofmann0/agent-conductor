@@ -71,8 +71,10 @@ module.exports = {
     },
     {
       name: "src-not-to-test",
+      comment:
+        "Shipped code must not depend on test code. Tests may use test/fakes.",
       severity: "error",
-      from: { path: "^src/" },
+      from: { path: "^src/", pathNot: "\\.test\\.ts$" },
       to: { path: "^test/" },
     },
     {
