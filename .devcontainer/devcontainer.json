@@ -10,6 +10,28 @@
   "remoteEnv": {
     "PATH": "/home/node/.bun/bin:${containerEnv:PATH}"
   },
+  "mounts": [
+    {
+      "source": "agent-conductor-opencode-data-${devcontainerId}",
+      "target": "/home/node/.local/share/opencode",
+      "type": "volume"
+    },
+    {
+      "source": "agent-conductor-opencode-config-${devcontainerId}",
+      "target": "/home/node/.config/opencode",
+      "type": "volume"
+    },
+    {
+      "source": "agent-conductor-opencode-state-${devcontainerId}",
+      "target": "/home/node/.local/state/opencode",
+      "type": "volume"
+    },
+    {
+      "source": "agent-conductor-gh-config-${devcontainerId}",
+      "target": "/home/node/.config/gh",
+      "type": "volume"
+    }
+  ],
   "onCreateCommand": "bash .devcontainer/on-create.sh",
   "postCreateCommand": "bun install --frozen-lockfile",
   "customizations": {

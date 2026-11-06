@@ -7,6 +7,17 @@ BUN_VERSION="$(node -p "require('./package.json').packageManager.split('@')[1]")
 # The curl installer from opencode.ai still installs OpenCode V1, so use npm.
 OPENCODE_VERSION="2.2.5"
 
+# Named volumes (see devcontainer.json) are created owned by root. They keep the
+# OpenCode login, OpenCode settings and the GitHub CLI login across rebuilds.
+for dir in \
+  "$HOME/.local/share/opencode" \
+  "$HOME/.config/opencode" \
+  "$HOME/.local/state/opencode" \
+  "$HOME/.config/gh"; do
+  sudo mkdir -p "$dir"
+  sudo chown -R "$(id -u):$(id -g)" "$dir"
+done
+
 echo "Installing bun ${BUN_VERSION}"
 curl -fsSL https://bun.sh/install | bash -s "bun-v${BUN_VERSION}"
 
