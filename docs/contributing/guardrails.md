@@ -102,6 +102,17 @@ only) and `*.types.ts` (types only, enforced by ESLint).
 coverage number.
 **When it fails:** add the test file next to the source file.
 
+## Schema drift
+
+**What:** `conductor.schema.json` (the JSON schema users reference from their
+`conductor.yaml`) is generated from the zod schema via `configJsonSchema()` in
+`src/core/config/json-schema.ts`. The check regenerates it and compares it with the
+committed file. It also fails if the file exists but the generator is gone.
+**Why:** The zod schema is the single source of truth. A hand-edited or stale JSON
+schema would give users wrong editor hints.
+**When it fails:** run `bun run schema:generate` and commit the result. Never edit
+`conductor.schema.json` by hand.
+
 ## Tests and coverage
 
 **What:** Vitest with V8 coverage. Thresholds: 90 % (lines, branches, functions,

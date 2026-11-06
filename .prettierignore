@@ -4,3 +4,4 @@ reports
 .stryker-tmp
 node_modules
 bun.lock
+conductor.schema.json

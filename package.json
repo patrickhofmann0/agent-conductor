@@ -32,10 +32,12 @@
     "test": "vitest run --coverage",
     "test:watch": "vitest",
     "test:pairs": "bun scripts/verify-test-pairs.ts",
+    "schema:generate": "bun scripts/generate-schema.ts",
+    "schema:check": "bun scripts/verify-schema-drift.ts",
     "build": "bun build src/cli/index.ts --target=node --format=esm --outdir dist",
     "smoke": "node dist/index.js --version",
     "mutation": "stryker run",
-    "verify:fast": "bun run format:check && bun run docs:lint && bun run docs:links && bun run lint && bun run typecheck && bun run arch && bun run deadcode && bun run test:pairs && bun run test",
+    "verify:fast": "bun run format:check && bun run docs:lint && bun run docs:links && bun run lint && bun run typecheck && bun run arch && bun run deadcode && bun run test:pairs && bun run schema:check && bun run test",
     "verify": "bun run verify:fast && bun run build && bun run smoke"
   },
   "devDependencies": {
