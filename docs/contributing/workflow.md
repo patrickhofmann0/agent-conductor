@@ -38,6 +38,30 @@ on `main` and must follow the same format.
    own pull request** (see [guardrails](guardrails.md#changing-a-guardrail)).
 5. Squash-merge. The branch is deleted automatically.
 
+### Stacked pull requests
+
+Guardrail changes must go into their own pull request, so a feature sometimes depends on
+a guardrail branch that is not merged yet. Base the feature branch on the guardrail
+branch and open both pull requests.
+
+After the guardrail pull request is squash-merged, `main` contains one new commit, but
+the feature branch still contains the original guardrail commits. Git does not know
+they are the same, so the feature pull request suddenly shows the guardrail changes too,
+and the `guardrails` check fails. Move the feature branch onto `main` and drop the old
+commits:
+
+```bash
+git fetch origin
+git rebase --onto origin/main <guardrail-branch> <feature-branch>
+git push --force-with-lease origin <feature-branch>
+```
+
+Check the result before pushing:
+
+```bash
+bun scripts/verify-guardrails.ts --base origin/main   # expect "No guardrail files changed."
+```
+
 ## Definition of done
 
 - `bun run verify` passes.
