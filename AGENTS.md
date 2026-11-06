@@ -70,6 +70,8 @@ and such PRs must not touch `src/` or `test/`.
 - Look up current APIs in `node_modules/**/*.d.ts` or official docs before using a
   library. Do not rely on memory for OpenCode, Stryker, ESLint or GitHub Actions APIs.
 - Keep dependency versions pinned exactly.
+- Git hooks (lefthook) source `scripts/hook-env.sh`, which adds `~/.bun/bin` to `PATH`
+  if needed. Never bypass hooks with `--no-verify`.
 - Commits follow Conventional Commits (`feat:`, `fix:`, `chore:`, `docs:`, `test:`,
   `refactor:`).
 - New architectural decisions need an ADR in `docs/adr/` (copy `0000-template.md`).

@@ -1,4 +1,6 @@
 # GUARDRAIL FILE. Changes require the `guardrails-change` label. See docs/adr/0010.
+rc: scripts/hook-env.sh
+
 pre-commit:
   parallel: true
   commands:
