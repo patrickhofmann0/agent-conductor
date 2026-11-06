@@ -14,13 +14,13 @@ exists, how to fix failures, architecture, testing) are in `docs/contributing/`.
 
 `bun run verify` passes. Nothing else counts. Run it before you consider a task finished.
 
-| Command               | Purpose                                                                                                                                                |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `bun run verify`      | Everything CI runs (format, markdown lint, internal links, lint, types, architecture, dead code, test pairs, tests + coverage, build, Node smoke test) |
-| `bun run verify:fast` | `verify` without build and smoke test                                                                                                                  |
-| `bun run test:watch`  | Vitest in watch mode                                                                                                                                   |
-| `bun run mutation`    | Stryker mutation testing (score must be ≥ 80)                                                                                                          |
-| `bun run format`      | Apply Prettier                                                                                                                                         |
+| Command               | Purpose                                                                                                                                                              |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `bun run verify`      | Everything CI runs (format, markdown lint, internal links, lint, types, architecture, dead code, test pairs, schema drift, tests + coverage, build, Node smoke test) |
+| `bun run verify:fast` | `verify` without build and smoke test                                                                                                                                |
+| `bun run test:watch`  | Vitest in watch mode                                                                                                                                                 |
+| `bun run mutation`    | Stryker mutation testing (score must be ≥ 80)                                                                                                                        |
+| `bun run format`      | Apply Prettier                                                                                                                                                       |
 
 ## Architecture rules (enforced by dependency-cruiser)
 
