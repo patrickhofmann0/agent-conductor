@@ -134,6 +134,11 @@ results.
 
 ### Notes
 
+- The devcontainer sets `terminal.integrated.sendKeybindingsToShell`, so keyboard
+  shortcuts in VS Code's terminal reach OpenCode instead of VS Code (for example
+  **Ctrl+P**, **Ctrl+J**, **Ctrl+Tab**, **Ctrl+O**). To use VS Code's own shortcuts,
+  click into the editor first. Alternatively, run OpenCode
+  from a native terminal with `npx @devcontainers/cli exec --workspace-folder . opencode`.
 - `node_modules` lives in the mounted repository and is shared between host and
   container. This works because both are Linux x64. Do not run `bun install` on both
   sides at the same time.
