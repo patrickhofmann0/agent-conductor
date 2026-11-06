@@ -40,7 +40,7 @@ as user `node`.
 Optional: the [GitHub CLI](https://cli.github.com) (`gh`) for the repository setup
 script, and OpenCode V2 for trying conductor end to end. Install OpenCode with
 `npm install --global @opencode/cli@2.2.5`; the `curl` installer from opencode.ai still
-installs V1 (see ADR 0012).
+installs V1 ([ADR 0012](../adr/0012-opencode-v2-client-and-private-server.md)).
 
 ## Git hooks
 
@@ -68,6 +68,77 @@ the failure to later.
 | Hooks do not run at all                         | Run `bun install` again, or `bunx lefthook install`                    |
 | `pre-push` is slow                              | It runs the full fast verification. That is intended                   |
 | Commit rejected with `subject may not be empty` | Use a Conventional Commit message, see [workflow](workflow.md#commits) |
+
+## Running an agent inside the devcontainer
+
+Run OpenCode inside the devcontainer to let an agent work on this repository with the
+same toolchain as CI, isolated from the rest of your machine.
+
+### Start
+
+With VS Code, choose **Reopen in Container** and open a terminal. With the CLI:
+
+```bash
+npx @devcontainers/cli up --workspace-folder .
+npx @devcontainers/cli exec --workspace-folder . opencode
+```
+
+### Sign in once
+
+The container does not see your host credentials. Its OpenCode login, OpenCode settings
+and GitHub CLI login live in Docker volumes that survive container rebuilds:
+
+| Volume                                 | Mounted at                |
+| -------------------------------------- | ------------------------- |
+| `agent-conductor-opencode-data-<id>`   | `~/.local/share/opencode` |
+| `agent-conductor-opencode-config-<id>` | `~/.config/opencode`      |
+| `agent-conductor-opencode-state-<id>`  | `~/.local/state/opencode` |
+| `agent-conductor-gh-config-<id>`       | `~/.config/gh`            |
+
+After the first start:
+
+1. Start `opencode` and connect your model provider.
+2. Sign in to GitHub and let git use it for pushes:
+
+   ```bash
+   gh auth login
+   gh auth setup-git
+   ```
+
+3. Set your git identity if your editor does not forward it (VS Code does, the
+   devcontainer CLI does not):
+
+   ```bash
+   git config --global user.name "Your Name"
+   git config --global user.email "you@example.com"
+   ```
+
+To sign out completely, remove the volumes with `docker volume rm`.
+
+### Hand over context
+
+A new session in the container does not know earlier conversations. Everything an agent
+needs is in the repository: [AGENTS.md](../../AGENTS.md) is loaded automatically, the
+current phase and its tasks are in the [plan](../PLAN.md), and decisions are in the
+[ADRs](../adr). A good first prompt:
+
+```text
+Read AGENTS.md, docs/PLAN.md (the current phase) and the ADRs it references.
+Implement the next open task on a new branch from main, one small step at a time,
+and run `bun run verify` after each step. Check library types in node_modules
+before using an API.
+```
+
+See [working with agents](working-with-agents.md) for how to cut tasks and review the
+results.
+
+### Notes
+
+- `node_modules` lives in the mounted repository and is shared between host and
+  container. This works because both are Linux x64. Do not run `bun install` on both
+  sides at the same time.
+- Agents in the container can still reach the network and everything in the
+  repository. The container protects your host, not the repository.
 
 ## GitHub repository settings
 
