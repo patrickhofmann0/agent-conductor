@@ -1,0 +1,23 @@
+# GUARDRAIL FILE. Changes require the `guardrails-change` label. See docs/adr/0010.
+pre-commit:
+  parallel: true
+  commands:
+    format:
+      glob: "*.{ts,js,cjs,mjs,json,md,yml,yaml}"
+      run: bunx prettier --check {staged_files}
+    lint:
+      glob: "*.{ts,js,cjs,mjs}"
+      run: bunx eslint --max-warnings 0 --no-warn-ignored {staged_files}
+    typecheck:
+      glob: "*.ts"
+      run: bunx tsc --noEmit
+
+commit-msg:
+  commands:
+    commitlint:
+      run: bunx commitlint --edit {1}
+
+pre-push:
+  commands:
+    verify:
+      run: bun run verify:fast

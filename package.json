@@ -1,0 +1,60 @@
+{
+  "name": "agent-conductor",
+  "version": "0.0.0",
+  "description": "Orchestrates AI agents (product owner, planner, coder, tester, reviewer) on top of OpenCode to implement features.",
+  "license": "UNLICENSED",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/patrickhofmann0/agent-conductor.git"
+  },
+  "bin": {
+    "conductor": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "conductor.schema.json"
+  ],
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "packageManager": "bun@1.4.4",
+  "scripts": {
+    "prepare": "lefthook install",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint . --max-warnings 0",
+    "typecheck": "tsc --noEmit",
+    "arch": "depcruise src scripts --config .dependency-cruiser.cjs",
+    "deadcode": "knip",
+    "test": "vitest run --coverage",
+    "test:watch": "vitest",
+    "test:pairs": "bun scripts/verify-test-pairs.ts",
+    "build": "bun build src/cli/index.ts --target=node --format=esm --outdir dist",
+    "smoke": "node dist/index.js --version",
+    "mutation": "stryker run",
+    "verify:fast": "bun run format:check && bun run lint && bun run typecheck && bun run arch && bun run deadcode && bun run test:pairs && bun run test",
+    "verify": "bun run verify:fast && bun run build && bun run smoke"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "21.2.4",
+    "@commitlint/config-conventional": "21.2.4",
+    "@eslint-community/eslint-plugin-eslint-comments": "4.8.1",
+    "@eslint/js": "10.0.1",
+    "@stryker-mutator/core": "10.1.1",
+    "@stryker-mutator/typescript-checker": "10.1.1",
+    "@stryker-mutator/vitest-runner": "10.1.1",
+    "@types/node": "22.20.5",
+    "@vitest/coverage-v8": "5.1.0",
+    "@vitest/eslint-plugin": "1.6.28",
+    "dependency-cruiser": "18.7.2",
+    "eslint": "10.14.0",
+    "eslint-config-prettier": "10.1.8",
+    "knip": "6.44.1",
+    "lefthook": "2.2.2",
+    "prettier": "3.9.10",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.72.1",
+    "vitest": "5.1.0"
+  }
+}

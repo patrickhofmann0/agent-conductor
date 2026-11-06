@@ -1,0 +1,17 @@
+# GUARDRAIL FILE. Guardrail files are owned by the maintainer.
+# See docs/adr/0010 and scripts/guardrails.ts (keep both lists in sync).
+
+/tsconfig*.json            @patrickhofmann0
+/eslint.config.*           @patrickhofmann0
+/.prettierrc*              @patrickhofmann0
+/.prettierignore           @patrickhofmann0
+/.dependency-cruiser.*     @patrickhofmann0
+/knip.json                 @patrickhofmann0
+/vitest.config.*           @patrickhofmann0
+/stryker.config.*          @patrickhofmann0
+/lefthook.yml              @patrickhofmann0
+/commitlint.config.*       @patrickhofmann0
+/package.json              @patrickhofmann0
+/.github/                  @patrickhofmann0
+/scripts/                  @patrickhofmann0
+/AGENTS.md                 @patrickhofmann0

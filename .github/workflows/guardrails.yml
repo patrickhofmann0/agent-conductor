@@ -1,0 +1,57 @@
+# GUARDRAIL FILE. Changes require the `guardrails-change` label. See docs/adr/0010.
+#
+# Fails when a PR changes guardrail files (lint/test/type/arch configs, CI,
+# scripts, AGENTS.md, package.json scripts) unless
+#   1. a user with admin or maintain permission added the `guardrails-change` label, and
+#   2. the PR does not change anything in src/ or test/.
+name: guardrails
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+  pull-requests: read
+  issues: read
+
+concurrency:
+  group: guardrails-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  guardrails:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Check who approved the guardrail change
+        id: approval
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          HAS_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'guardrails-change') }}
+        run: |
+          approved=false
+          if [ "$HAS_LABEL" = "true" ]; then
+            actor=$(gh api --paginate "repos/$REPO/issues/$PR/events" \
+              --jq '[.[] | select(.event == "labeled" and .label.name == "guardrails-change")] | last | .actor.login')
+            permission=$(gh api "repos/$REPO/collaborators/$actor/permission" --jq '.permission')
+            echo "Label added by $actor (permission: $permission)"
+            if [ "$permission" = "admin" ] || [ "$permission" = "maintain" ]; then
+              approved=true
+            fi
+          fi
+          echo "approved=$approved" >> "$GITHUB_OUTPUT"
+
+      - name: Evaluate guardrail changes
+        env:
+          GUARDRAILS_APPROVED: ${{ steps.approval.outputs.approved }}
+        run: bun scripts/verify-guardrails.ts --base "origin/${{ github.base_ref }}"
