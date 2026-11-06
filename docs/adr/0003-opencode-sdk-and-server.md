@@ -1,6 +1,6 @@
 # 0003. OpenCode as agent harness via SDK and server
 
-- Status: accepted
+- Status: accepted; client choice and permission handling superseded by [ADR 0012](0012-opencode-v2-client-and-private-server.md)
 - Date: 2026-11-06
 - Plan references: D5, D6, D24, D25
 

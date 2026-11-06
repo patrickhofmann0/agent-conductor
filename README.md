@@ -4,8 +4,8 @@ Orchestrates AI agents on top of [OpenCode](https://opencode.ai) to implement fe
 A feature request goes through a fixed team of agents — product owner, planner, coder,
 tester and reviewer — with a configurable review loop. The result is a pull request.
 
-> **Status:** early development (phase 0 of 6: foundation and guardrails). conductor
-> cannot run a pipeline yet. See the [project plan](docs/PLAN.md) (German).
+> **Status:** early development (phase 1 of 6 done: the pipeline logic). conductor
+> cannot run against a repository yet. See the [project plan](docs/PLAN.md) (German).
 
 ## How it works
 
@@ -46,12 +46,14 @@ conductor runs the same way locally (in a devcontainer) and in GitHub Actions.
 
 | You want to…                     | Read                                                                                       |
 | -------------------------------- | ------------------------------------------------------------------------------------------ |
+| Understand how conductor works   | [Concepts](docs/guide/concepts.md)                                                         |
+| Configure conductor              | [Configuration reference](docs/guide/configuration.md)                                     |
 | Understand the decisions         | [Architecture decision records](docs/adr)                                                  |
 | See the roadmap                  | [Project plan](docs/PLAN.md) (German)                                                      |
 | Contribute                       | [CONTRIBUTING.md](CONTRIBUTING.md)                                                         |
 | Work on this repo with AI agents | [Working with agents](docs/contributing/working-with-agents.md) and [AGENTS.md](AGENTS.md) |
 
-A user guide (`docs/guide/`) follows with the phases that deliver the features.
+Getting-started guides for local use and GitHub Actions follow with phases 2 to 4.
 
 ## License
 

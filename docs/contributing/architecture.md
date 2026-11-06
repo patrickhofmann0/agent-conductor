@@ -4,8 +4,8 @@ agent-conductor uses a ports-and-adapters (hexagonal) architecture. The rules be
 enforced by dependency-cruiser (`bun run arch`); the reasoning is in
 [ADR 0009](../adr/0009-ports-and-adapters.md).
 
-> Status: only `src/cli/` exists so far. `core` and `adapters` are introduced in phases
-> 1 and 2 of the [plan](../PLAN.md).
+> Status: `src/core/` (phase 1) and `src/cli/` exist. Adapters follow in phase 2 of the
+> [plan](../PLAN.md).
 
 ## Layers
 
