@@ -1,0 +1,284 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "version": {
+      "default": 1,
+      "type": "number",
+      "const": 1
+    },
+    "language": {
+      "default": "en",
+      "type": "string",
+      "pattern": "^[a-z]{2}(-[A-Z]{2})?$"
+    },
+    "models": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "default": {
+          "type": "string",
+          "pattern": "^[^/\\s]+\\/\\S+$"
+        },
+        "po": {
+          "type": "string",
+          "pattern": "^[^/\\s]+\\/\\S+$"
+        },
+        "planner": {
+          "type": "string",
+          "pattern": "^[^/\\s]+\\/\\S+$"
+        },
+        "coder": {
+          "type": "string",
+          "pattern": "^[^/\\s]+\\/\\S+$"
+        },
+        "tester": {
+          "type": "string",
+          "pattern": "^[^/\\s]+\\/\\S+$"
+        },
+        "reviewer": {
+          "type": "string",
+          "pattern": "^[^/\\s]+\\/\\S+$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "gates": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "po": {
+          "default": true,
+          "type": "boolean"
+        },
+        "planner": {
+          "default": true,
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "loop": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "maxIterations": {
+          "default": 3,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        },
+        "onLimit": {
+          "default": "draft_pr",
+          "type": "string",
+          "enum": [
+            "draft_pr",
+            "fail",
+            "ask"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "limits": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "phaseTimeout": {
+          "default": "20m",
+          "type": "string",
+          "pattern": "^(\\d+h)?(\\d+m)?(\\d+s)?$"
+        },
+        "totalTimeout": {
+          "default": "2h",
+          "type": "string",
+          "pattern": "^(\\d+h)?(\\d+m)?(\\d+s)?$"
+        },
+        "maxCostUsd": {
+          "default": 10,
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          },
+          "command": {
+            "type": "string",
+            "minLength": 1
+          },
+          "required": {
+            "default": true,
+            "type": "boolean"
+          },
+          "timeout": {
+            "default": "10m",
+            "type": "string",
+            "pattern": "^(\\d+h)?(\\d+m)?(\\d+s)?$"
+          }
+        },
+        "required": [
+          "name",
+          "command"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "guardrails": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "paths": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "git": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "baseBranch": {
+          "default": "main",
+          "type": "string",
+          "minLength": 1
+        },
+        "branchPrefix": {
+          "default": "conductor/",
+          "type": "string"
+        },
+        "commitMessage": {
+          "default": "feat: {{title}}",
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "github": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "labels": {
+          "default": {},
+          "type": "object",
+          "properties": {
+            "trigger": {
+              "default": "conductor",
+              "type": "string",
+              "minLength": 1
+            },
+            "approved": {
+              "default": "conductor:approved",
+              "type": "string",
+              "minLength": 1
+            },
+            "needsHuman": {
+              "default": "conductor:needs-human",
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "roles": {
+      "default": {},
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "enum": [
+          "po",
+          "planner",
+          "coder",
+          "tester",
+          "reviewer"
+        ]
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "minLength": 1
+          },
+          "promptMode": {
+            "default": "append",
+            "type": "string",
+            "enum": [
+              "append",
+              "replace"
+            ]
+          },
+          "permissions": {
+            "type": "object",
+            "properties": {
+              "edit": {
+                "type": "string",
+                "enum": [
+                  "allow",
+                  "deny"
+                ]
+              },
+              "bash": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "allow",
+                      "deny"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "additionalProperties": {
+                      "type": "string",
+                      "enum": [
+                        "allow",
+                        "deny"
+                      ]
+                    }
+                  }
+                ]
+              },
+              "webfetch": {
+                "type": "string",
+                "enum": [
+                  "allow",
+                  "deny"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$id": "https://raw.githubusercontent.com/patrickhofmann0/agent-conductor/main/conductor.schema.json",
+  "title": "agent-conductor configuration (conductor.yaml)"
+}
