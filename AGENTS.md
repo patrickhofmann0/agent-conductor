@@ -7,7 +7,8 @@ Instructions for AI agents (and humans) working on this repository.
 `agent-conductor` orchestrates AI agents (product owner → planner → coder → tester →
 reviewer, with a reviewer loop) on top of OpenCode to implement features. It runs
 locally in a devcontainer and in GitHub Actions. The full plan is in `docs/PLAN.md`;
-decisions are recorded in `docs/adr/`.
+decisions are recorded in `docs/adr/`. Explanations for humans (why each guardrail
+exists, how to fix failures, architecture, testing) are in `docs/contributing/`.
 
 ## Definition of done
 
@@ -75,4 +76,5 @@ and such PRs must not touch `src/` or `test/`.
 - Commits follow Conventional Commits (`feat:`, `fix:`, `chore:`, `docs:`, `test:`,
   `refactor:`).
 - New architectural decisions need an ADR in `docs/adr/` (copy `0000-template.md`).
+- Update human documentation in `docs/` together with the code it describes.
 - Code, comments, prompts and commit messages are in English.

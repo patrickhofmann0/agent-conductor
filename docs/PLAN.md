@@ -723,7 +723,7 @@ Aufgaben:
 - [x] Hello-World-CLI (`conductor --version`) mit Test, Build, Node-Smoke-Test
 - [ ] Remote-Repo anlegen, pushen, `scripts/setup-github.sh` ausführen (manuell, Maintainer)
 - [x] Hook-Umgebung (`scripts/hook-env.sh`), Doku-Leitplanken, ADR 0011
-- [ ] Doku für Menschen Phase 0 (9.13)
+- [x] Doku für Menschen Phase 0 (9.13)
 
 Akzeptanzkriterien:
 

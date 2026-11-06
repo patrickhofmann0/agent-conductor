@@ -1,23 +1,58 @@
 # agent-conductor
 
-Orchestrates AI agents on top of [OpenCode](https://opencode.ai) to implement features:
-product owner → planner → coder → tester → reviewer, with a configurable review loop.
-Runs locally in a devcontainer and in GitHub Actions; the result is a pull request.
+Orchestrates AI agents on top of [OpenCode](https://opencode.ai) to implement features.
+A feature request goes through a fixed team of agents — product owner, planner, coder,
+tester and reviewer — with a configurable review loop. The result is a pull request.
 
-> Status: Phase 0 (foundation and guardrails). Not usable yet. See [docs/PLAN.md](docs/PLAN.md).
+> **Status:** early development (phase 0 of 6: foundation and guardrails). conductor
+> cannot run a pipeline yet. See the [project plan](docs/PLAN.md) (German).
 
-## Development
+## How it works
 
-Open the repository in its devcontainer, or install Node ≥ 22.12 and Bun (version in
-`package.json#packageManager`), then:
-
-```bash
-bun install
-bun run verify
+```mermaid
+flowchart LR
+    input[Issue or prompt] --> po[Product owner]
+    po --> g1{{Gate}}
+    g1 --> planner[Planner]
+    planner --> g2{{Gate}}
+    g2 --> coder[Coder]
+    coder --> tester[Tester]
+    tester --> checks[Checks]
+    checks --> reviewer[Reviewer]
+    reviewer -- changes requested --> coder
+    reviewer -- changes requested --> tester
+    reviewer -- approved --> pr[Pull request]
 ```
 
-Read [AGENTS.md](AGENTS.md) before contributing. It applies to humans and AI agents
-alike. Architecture decisions are in [docs/adr](docs/adr).
+- **Product owner** turns an issue or prompt into requirements, acceptance criteria and
+  open questions.
+- **Planner** writes an implementation plan.
+- **Coder** implements, then **tester** adds tests and guardrails (lint rules,
+  architecture rules, CI checks).
+- **Checks** — your test, lint and build commands — are run by conductor itself, not by
+  the agents.
+- **Reviewer** returns a structured verdict and routes findings back to coder and/or
+  tester until it approves or a limit (iterations, time, cost) is reached.
+- **Gates** let a human approve or revise requirements and plan: in the terminal when
+  running locally, through pull request reviews in GitHub Actions.
 
-After creating the GitHub repository, a maintainer runs `scripts/setup-github.sh` once
-to configure branch protection, merge settings and labels.
+Agents never touch git. conductor creates the branch, commits, squashes and opens the
+pull request, and verifies after every phase that no agent changed the repository
+history. The coder cannot modify the tests and rules the tester created.
+
+conductor runs the same way locally (in a devcontainer) and in GitHub Actions.
+
+## Documentation
+
+| You want to…                     | Read                                                                                       |
+| -------------------------------- | ------------------------------------------------------------------------------------------ |
+| Understand the decisions         | [Architecture decision records](docs/adr)                                                  |
+| See the roadmap                  | [Project plan](docs/PLAN.md) (German)                                                      |
+| Contribute                       | [CONTRIBUTING.md](CONTRIBUTING.md)                                                         |
+| Work on this repo with AI agents | [Working with agents](docs/contributing/working-with-agents.md) and [AGENTS.md](AGENTS.md) |
+
+A user guide (`docs/guide/`) follows with the phases that deliver the features.
+
+## License
+
+Not yet decided. Until then, all rights reserved.
