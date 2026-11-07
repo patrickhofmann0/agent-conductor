@@ -5,8 +5,8 @@ enforced by dependency-cruiser (`bun run arch`); the reasoning is in
 [ADR 0009](../adr/0009-ports-and-adapters.md).
 
 > Status: `src/core/` (phase 1) and `src/cli/` exist. Phase 2 of the [plan](../PLAN.md)
-> adds the adapters: `src/adapters/opencode/`, `src/adapters/git/` and
-> `src/adapters/checks/` exist.
+> adds the adapters: `src/adapters/opencode/`, `src/adapters/git/`,
+> `src/adapters/checks/` and `src/adapters/terminal/` exist.
 
 ## Layers
 
@@ -86,6 +86,20 @@ OpenCode is driven through `@opencode/client` and a private server started by co
   keeps the end, where failures usually show.
 - On timeout, the whole process group is killed (including child processes such as test
   workers). The result has `timedOut: true`, `exitCode: null` and a note in the output.
+
+## Terminal gate
+
+`src/adapters/terminal/` implements the `GateHandler` port for local runs:
+
+- At a gate it prints the artifact and asks: approve, revise with feedback typed in the
+  terminal (finished by an empty line), revise with feedback written in the editor
+  (`$VISUAL`, then `$EDITOR`, then `vi`; lines starting with `#` are ignored), or abort
+  with an optional reason.
+- At a limit (`loop.onLimit: ask`) it asks: continue, draft PR or abort.
+- Unknown answers and empty feedback lead to the question being asked again. If the input
+  ends (for example Ctrl-D), the run is aborted.
+- The adapter takes its input and output streams as options and does not use `console`;
+  the CLI will pass `process.stdin` and `process.stderr` and call `close()` at the end.
 
 ## Git adapter
 
