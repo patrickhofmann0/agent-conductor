@@ -52,10 +52,8 @@ files")`.
 - **Adapters** are tested against real but local resources where cheap (temporary git
   repositories, a local HTTP server) and never against real AI models or GitHub. The git
   adapter uses `test/support/temp-repo.ts`, which creates a throwaway repository with one
-  commit.
-  repositories, a local HTTP server) and never against real AI models or GitHub. The
-  OpenCode adapter runs against `test/support/mock-opencode.ts`, a small stand-in for
-  the OpenCode HTTP API that records requests and can push events.
+  commit. The OpenCode adapter runs against `test/support/mock-opencode.ts`, a small
+  stand-in for the OpenCode HTTP API that records requests and can push events.
 
 ## Coverage
 

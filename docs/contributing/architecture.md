@@ -5,9 +5,8 @@ enforced by dependency-cruiser (`bun run arch`); the reasoning is in
 [ADR 0009](../adr/0009-ports-and-adapters.md).
 
 > Status: `src/core/` (phase 1) and `src/cli/` exist. Phase 2 of the [plan](../PLAN.md)
-> adds the adapters, starting with `src/adapters/git/`.
-> adds the adapters; `src/adapters/opencode/` is the first one.
-
+> adds the adapters: `src/adapters/opencode/`, `src/adapters/git/` and
+> `src/adapters/checks/` exist.
 
 ## Layers
 
@@ -73,6 +72,20 @@ Rules of thumb:
 
 The published package targets Node.js ≥ 22.12 and may only use `node:*` APIs. Bun is
 used to install, run scripts and bundle ([ADR 0002](../adr/0002-typescript-node-runtime-bun-tooling.md)).
+OpenCode is driven through `@opencode/client` and a private server started by conductor
+([ADR 0012](../adr/0012-opencode-v2-client-and-private-server.md)).
+
+## Check runner
+
+`src/adapters/checks/` implements the `CheckRunner` port:
+
+- Each check runs as a shell command in the target repository with `CI=true`,
+  `NO_COLOR=1` and `FORCE_COLOR=0`, so tools print plain, non-interactive output.
+- stdout and stderr are collected together. Colors are stripped, and output longer than
+  20,000 characters is shortened: a quarter of the budget keeps the beginning, the rest
+  keeps the end, where failures usually show.
+- On timeout, the whole process group is killed (including child processes such as test
+  workers). The result has `timedOut: true`, `exitCode: null` and a note in the output.
 
 ## Git adapter
 
@@ -91,12 +104,6 @@ used to install, run scripts and bundle ([ADR 0002](../adr/0002-typescript-node-
   overwritten.
 
 ## OpenCode adapter
-
-OpenCode is driven through its SDK and a server started by conductor
-([ADR 0003](../adr/0003-opencode-sdk-and-server.md)).
-
-OpenCode is driven through `@opencode/client` and a private server started by conductor
-([ADR 0012](../adr/0012-opencode-v2-client-and-private-server.md)).
 
 `src/adapters/opencode/` implements the `AgentRunner` port:
 
