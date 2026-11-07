@@ -4,8 +4,8 @@ agent-conductor uses a ports-and-adapters (hexagonal) architecture. The rules be
 enforced by dependency-cruiser (`bun run arch`); the reasoning is in
 [ADR 0009](../adr/0009-ports-and-adapters.md).
 
-> Status: `src/core/` (phase 1) and `src/cli/` exist. Adapters follow in phase 2 of the
-> [plan](../PLAN.md).
+> Status: `src/core/` (phase 1) and `src/cli/` exist. Phase 2 of the [plan](../PLAN.md)
+> adds the adapters, starting with `src/adapters/git/`.
 
 ## Layers
 
@@ -73,3 +73,19 @@ The published package targets Node.js ≥ 22.12 and may only use `node:*` APIs. 
 used to install, run scripts and bundle ([ADR 0002](../adr/0002-typescript-node-runtime-bun-tooling.md)).
 OpenCode is driven through its SDK and a server started by conductor
 ([ADR 0003](../adr/0003-opencode-sdk-and-server.md)).
+
+## Git adapter
+
+`src/adapters/git/` implements the `Vcs` port with the `git` command line
+([ADR 0006](../adr/0006-git-only-by-framework.md)):
+
+- `changedFiles` and `diff` include untracked files. They stage everything into a
+  temporary index (`GIT_INDEX_FILE`), so the real index stays untouched.
+- `revertPaths` restores files from the given commit and deletes files that did not exist
+  there. Paths are taken literally, not as globs.
+- `commit` and `squash` stage all changes and also create empty commits. The target
+  repository's commit hooks run; intermediate commits use `chore(conductor): …` messages.
+- `integritySnapshot` hashes HEAD, the checked-out branch, all refs, the repository
+  config and the hooks directory (plan 5.3).
+- `push` uses `--force-with-lease`, so commits that conductor has not seen are never
+  overwritten.
