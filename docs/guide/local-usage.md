@@ -9,7 +9,61 @@
 - Node.js ≥ 22.12 and git.
 - The `opencode` command (OpenCode V2, `npm install -g @opencode/cli`), logged in to a
   model provider. conductor starts its own private OpenCode server for every run.
-- A clean working tree: commit or stash your changes before `conductor run`.
+  Run `opencode` once to check that a model answers.
+- At least one commit on the base branch (`git.baseBranch`, default `main`): conductor
+  creates its branch from there.
+- A clean working tree: commit or stash your changes before `conductor run`. This
+  includes `conductor.yaml` itself.
+
+## Installation
+
+conductor is not published to npm yet. Build it from source and link the `conductor`
+command:
+
+```bash
+git clone https://github.com/patrickhofmann0/agent-conductor.git
+cd agent-conductor
+bun install
+bun run build   # creates dist/index.js
+npm link        # makes `conductor` available globally
+conductor --version
+```
+
+Without `npm link`, an alias works too:
+`alias conductor="node /path/to/agent-conductor/dist/index.js"`.
+
+## Quickstart in an empty repository
+
+```bash
+mkdir demo && cd demo
+git init -b main
+echo "# Demo" > README.md
+conductor init               # creates a commented conductor.yaml
+```
+
+Before the first run, edit `conductor.yaml`:
+
+- Set a model under `models.default`, for example `anthropic/claude-sonnet-4-5`.
+  Without one, OpenCode's default model is used.
+- Set a low `limits.maxCostUsd`, for example `2`.
+- Add `checks` once there is something to check (for example `npm test`). Without
+  checks, only the reviewer judges the result.
+
+Then validate, commit and start the run:
+
+```bash
+conductor validate-config
+git add -A && git commit -m "chore: initial"
+conductor run --no-pr "Create a small Node.js CLI that prints the current date, with tests"
+```
+
+conductor prints `Starting run <run-id>`; keep the ID for `resume`. When the run is
+done, the result is a single commit on `conductor/<run-id>-<slug>`:
+
+```bash
+git log --oneline main..HEAD
+git show
+```
 
 ## Commands
 
