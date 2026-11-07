@@ -75,6 +75,18 @@ used to install, run scripts and bundle ([ADR 0002](../adr/0002-typescript-node-
 OpenCode is driven through `@opencode/client` and a private server started by conductor
 ([ADR 0012](../adr/0012-opencode-v2-client-and-private-server.md)).
 
+## Check runner
+
+`src/adapters/checks/` implements the `CheckRunner` port:
+
+- Each check runs as a shell command in the target repository with `CI=true`,
+  `NO_COLOR=1` and `FORCE_COLOR=0`, so tools print plain, non-interactive output.
+- stdout and stderr are collected together. Colors are stripped, and output longer than
+  20,000 characters is shortened: a quarter of the budget keeps the beginning, the rest
+  keeps the end, where failures usually show.
+- On timeout, the whole process group is killed (including child processes such as test
+  workers). The result has `timedOut: true`, `exitCode: null` and a note in the output.
+
 ## Git adapter
 
 `src/adapters/git/` implements the `Vcs` port with the `git` command line
