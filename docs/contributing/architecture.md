@@ -101,6 +101,19 @@ OpenCode is driven through `@opencode/client` and a private server started by co
 - The adapter takes its input and output streams as options and does not use `console`;
   the CLI will pass `process.stdin` and `process.stderr` and call `close()` at the end.
 
+## CLI
+
+`src/cli/` parses arguments and wires the adapters into core:
+
+- `config-file.ts` reads `conductor.yaml` (YAML via the `yaml` package) and validates it
+  with the core schema.
+- `engine-setup.ts` builds the engine context for local runs: git, shell checks,
+  terminal gate and reporter, file run store, a no-op publisher and a private OpenCode
+  server. It closes the gate and stops the server when the command ends.
+- `commands/` holds one file per subcommand. `run` and `resume` take the agent runtime as
+  a parameter, so tests replace OpenCode with a scripted runner and use a real temporary
+  repository for everything else.
+
 ## Run store
 
 `src/adapters/store/` implements the `RunStore` port with plain files (plan 7.3):

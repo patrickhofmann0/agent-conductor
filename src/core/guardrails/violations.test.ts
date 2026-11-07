@@ -26,11 +26,21 @@ describe("guardrailViolations", () => {
   it("always protects framework files", () => {
     expect(
       guardrailViolations({
-        changed: [".conductor/runs/r1/state.json", "src/a.ts"],
+        changed: [".conductor/runs/r1/plan.md", "src/a.ts"],
         patterns: [],
         testerPaths: [],
       }),
-    ).toEqual([".conductor/runs/r1/state.json"]);
+    ).toEqual([".conductor/runs/r1/plan.md"]);
+  });
+
+  it("ignores the run state, which the engine rewrites after every step", () => {
+    expect(
+      guardrailViolations({
+        changed: [".conductor/runs/r1/state.json"],
+        patterns: ["**/*.json"],
+        testerPaths: [".conductor/runs/r1/state.json"],
+      }),
+    ).toEqual([]);
   });
 
   it("allows ordinary changes", () => {

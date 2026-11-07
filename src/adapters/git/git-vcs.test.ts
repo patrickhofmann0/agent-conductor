@@ -108,6 +108,12 @@ describe("createGitVcs", () => {
     );
   });
 
+  it("knows whether the working tree is clean", async () => {
+    expect(await vcs.isClean()).toBe(true);
+    await repo.write("new.ts", "x");
+    expect(await vcs.isClean()).toBe(false);
+  });
+
   it("reports an unchanged integrity snapshot", async () => {
     const before = await vcs.integritySnapshot();
     await repo.write("a.ts", "a");
