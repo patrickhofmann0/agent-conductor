@@ -57,8 +57,10 @@ git add -A && git commit -m "chore: initial"
 conductor run --no-pr "Create a small Node.js CLI that prints the current date, with tests"
 ```
 
-conductor prints `Starting run <run-id>`; keep the ID for `resume`. When the run is
-done, the result is a single commit on `conductor/<run-id>-<slug>`:
+conductor prints `Starting run <run-id>`; keep the ID for `resume`.
+`conductor show <run-id>` prints the requirements, the plan and every review, also for
+archived runs. When the run is done, the result is a single commit on
+`conductor/<run-id>-<slug>`:
 
 ```bash
 git log --oneline main..HEAD
@@ -74,6 +76,7 @@ git show
 | `conductor run --no-pr "Add CSV export"` | Starts a run on a new branch `conductor/<run-id>-<slug>`   |
 | `conductor resume --no-pr <run-id>`      | Continues a run that was interrupted or waits at a gate    |
 | `conductor runs`                         | Lists open runs: ID, status, step, branch and start time   |
+| `conductor show <run-id>`                | Shows a run with history, requirements, plan and reviews   |
 
 All commands work in the current directory, which must be the repository root. Progress
 and questions go to stderr; `run` and `resume` print one result line to stdout:

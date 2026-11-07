@@ -789,7 +789,7 @@ Aufgaben:
 - [x] Reviewer-Prompt: Sind keine Checks konfiguriert, sagt der Prompt das ausdrücklich („keine automatischen Checks, urteile nach Code-Inspektion“); sonst wartet der Reviewer bis zum Iterationslimit auf Testergebnisse
 - [x] CLI: `run` ohne konfigurierte Checks warnt deutlich vor dem Start (statt nur einer `warning:`-Zeile)
 - [x] Run-Store: Beim Archivieren leere Ordner `.conductor/runs/` und `.conductor/` im Repo entfernen
-- [ ] CLI: `conductor show <run-id>` zeigt einen Run (offen oder archiviert): Status, Kosten, Verlauf, Requirements, Plan und alle Review-Zwischenergebnisse (`review-<n>.json`: Verdict, Route, Zusammenfassung, Findings mit Schweregrad, Ziel und Datei)
+- [x] CLI: `conductor show <run-id>` zeigt einen Run (offen oder archiviert): Status, Kosten, Verlauf, Requirements, Plan und alle Review-Zwischenergebnisse (`review-<n>.json`: Verdict, Route, Zusammenfassung, Findings mit Schweregrad, Ziel und Datei)
 
 Akzeptanzkriterien:
 
