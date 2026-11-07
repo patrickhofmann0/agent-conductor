@@ -6,6 +6,8 @@ enforced by dependency-cruiser (`bun run arch`); the reasoning is in
 
 > Status: `src/core/` (phase 1) and `src/cli/` exist. Phase 2 of the [plan](../PLAN.md)
 > adds the adapters, starting with `src/adapters/git/`.
+> adds the adapters; `src/adapters/opencode/` is the first one.
+
 
 ## Layers
 
@@ -71,8 +73,6 @@ Rules of thumb:
 
 The published package targets Node.js ≥ 22.12 and may only use `node:*` APIs. Bun is
 used to install, run scripts and bundle ([ADR 0002](../adr/0002-typescript-node-runtime-bun-tooling.md)).
-OpenCode is driven through its SDK and a server started by conductor
-([ADR 0003](../adr/0003-opencode-sdk-and-server.md)).
 
 ## Git adapter
 
@@ -89,3 +89,26 @@ OpenCode is driven through its SDK and a server started by conductor
   config and the hooks directory (plan 5.3).
 - `push` uses `--force-with-lease`, so commits that conductor has not seen are never
   overwritten.
+
+## OpenCode adapter
+
+OpenCode is driven through its SDK and a server started by conductor
+([ADR 0003](../adr/0003-opencode-sdk-and-server.md)).
+
+OpenCode is driven through `@opencode/client` and a private server started by conductor
+([ADR 0012](../adr/0012-opencode-v2-client-and-private-server.md)).
+
+`src/adapters/opencode/` implements the `AgentRunner` port:
+
+- `server.ts` starts `opencode serve --hostname 127.0.0.1 --port 0` in the target
+  repository. It sets a random `OPENCODE_SERVER_PASSWORD`, reads the URL from the
+  `server listening on …` line and stops the process when the run ends. The `opencode`
+  binary must be on `PATH`.
+- `runner.ts` creates one session per agent run with the `build` agent, the role's model
+  and permission ruleset, or continues an existing session and replaces its rules. It
+  opens the event stream first, then sends the role instructions and the task as one
+  prompt, and waits until the execution ends.
+- `watch.ts` follows the session's events. Every `permission.asked` is rejected, because
+  nobody can answer during a run. Rejected requests are reported in the result's `error`.
+- When the timeout expires, the adapter interrupts the session and reports `timeout`.
+  The cost is the session cost after the run minus the cost before it.
