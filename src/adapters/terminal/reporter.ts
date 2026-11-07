@@ -4,6 +4,12 @@ function seconds(ms: number): string {
   return `${String(Math.round(ms / 1000))}s`;
 }
 
+/** Two decimals from one cent on; four below, so small costs do not show as $0.00. */
+export function formatUsd(amount: number): string {
+  const decimals = amount === 0 || amount >= 0.01 ? 2 : 4;
+  return `$${amount.toFixed(decimals)}`;
+}
+
 function iterationOf(iteration: number): string {
   return iteration > 0 ? ` (iteration ${String(iteration)})` : "";
 }
@@ -18,7 +24,7 @@ export function formatEvent(event: RunEvent): string {
     case "step_started":
       return `> ${event.step}${iterationOf(event.iteration)}`;
     case "agent_finished":
-      return `  ${event.step} finished in ${seconds(event.durationMs)}, $${event.costUsd.toFixed(2)}`;
+      return `  ${event.step} finished in ${seconds(event.durationMs)}, ${formatUsd(event.costUsd)}`;
     case "guardrail_reverted":
       return `  ! reverted changes to protected files: ${event.paths.join(", ")}`;
     case "limit_reached":
