@@ -73,6 +73,7 @@ git show
 | `conductor validate-config`              | Checks `conductor.yaml` and prints warnings                |
 | `conductor run --no-pr "Add CSV export"` | Starts a run on a new branch `conductor/<run-id>-<slug>`   |
 | `conductor resume --no-pr <run-id>`      | Continues a run that was interrupted or waits at a gate    |
+| `conductor runs`                         | Lists open runs: ID, status, step, branch and start time   |
 
 All commands work in the current directory, which must be the repository root. Progress
 and questions go to stderr; `run` and `resume` print one result line to stdout:
@@ -96,7 +97,9 @@ another budget, finish as a draft or abort.
 
 The run state is saved in `.conductor/runs/<run-id>/` after every step. Press Ctrl-C at
 any time; `conductor resume --no-pr <run-id>` repeats the interrupted step and
-continues. Finished runs are moved to `$XDG_DATA_HOME/agent-conductor/runs/` (by default
+continues. `conductor runs` shows the run IDs of all open runs. It reads the working
+tree, so run it on the run's branch, where conductor left you. Finished runs are moved
+to `$XDG_DATA_HOME/agent-conductor/runs/` (by default
 `~/.local/share/agent-conductor/runs/`).
 
 ## Exit codes
