@@ -11,6 +11,9 @@ import type { Config } from "../core/schemas/config.js";
 
 export const CONFIG_FILE = "conductor.yaml";
 
+export const NO_CHECKS_WARNING =
+  "No checks configured; only the reviewer judges the result.";
+
 export interface LoadedConfig {
   readonly config: Config;
   /** The file that was read, or null when the defaults apply. */
@@ -46,7 +49,7 @@ function warningsFor(config: Config, path: string | null): string[] {
     warnings.push(`No ${CONFIG_FILE} found; using defaults.`);
   }
   if (config.checks.length === 0) {
-    warnings.push("No checks configured; only the reviewer judges the result.");
+    warnings.push(NO_CHECKS_WARNING);
   }
   return warnings;
 }

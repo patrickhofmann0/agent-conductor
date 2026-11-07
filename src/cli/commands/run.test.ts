@@ -89,6 +89,8 @@ describe("run command", () => {
     expect(out()).toMatch(/^\S+ done conductor\/\S+-add-csv-export\n$/);
     expect(err()).toContain("po gate: requirements.md");
     expect(err()).not.toContain("reverted");
+    expect(err()).toContain("!!! No checks are configured in conductor.yaml.");
+    expect(err()).not.toContain("warning: No checks configured");
     expect(repo.git("rev-list", "--count", "main..HEAD")).toBe("1");
     expect(repo.git("show", "--name-only", "--format=", "HEAD")).toBe(
       "export.ts",
@@ -98,6 +100,25 @@ describe("run command", () => {
       await readdir(join(dataHome, "agent-conductor", "runs")),
     ).toHaveLength(1);
     expect(fake.closed()).toBe(true);
+  });
+
+  it("does not warn when checks are configured", async () => {
+    await repo.write(
+      "conductor.yaml",
+      'checks:\n  - name: test\n    command: "true"\n',
+    );
+    repo.git("add", "-A");
+    repo.git("commit", "-q", "-m", "chore: add checks");
+    const { io: cliIo, out, err } = io("a\na\n");
+    const code = await createRunCommand(agents().open)({
+      args: ["Add CSV export"],
+      noPr: true,
+      io: cliIo,
+    });
+    expect(code).toBe(0);
+    expect(out()).toContain(" done ");
+    expect(err()).not.toContain("!!!");
+    expect(err()).toContain("> checks (iteration 1)");
   });
 
   it("can be resumed after an interruption", async () => {
