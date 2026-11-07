@@ -6,7 +6,7 @@ enforced by dependency-cruiser (`bun run arch`); the reasoning is in
 
 > Status: `src/core/` (phase 1) and `src/cli/` exist. Phase 2 of the [plan](../PLAN.md)
 > adds the adapters: `src/adapters/opencode/`, `src/adapters/git/`,
-> `src/adapters/checks/` and `src/adapters/terminal/` exist.
+> `src/adapters/checks/`, `src/adapters/terminal/` and `src/adapters/store/` exist.
 
 ## Layers
 
@@ -100,6 +100,21 @@ OpenCode is driven through `@opencode/client` and a private server started by co
   ends (for example Ctrl-D), the run is aborted.
 - The adapter takes its input and output streams as options and does not use `console`;
   the CLI will pass `process.stdin` and `process.stderr` and call `close()` at the end.
+
+## Run store
+
+`src/adapters/store/` implements the `RunStore` port with plain files (plan 7.3):
+
+- An active run lives in `.conductor/runs/<run-id>/` in the target repository:
+  `state.json` (pretty-printed, validated with `runStateSchema` on load) next to the
+  artifacts (`requirements.md`, `plan.md`, `review-<n>.json`).
+- Files are written to a temporary file first and then renamed, so an interrupted run
+  never leaves a half-written state behind.
+- `archive` moves the run directory to the archive directory (locally
+  `~/.local/share/agent-conductor/runs/`). From then on, all reads and writes for that run
+  use the archive.
+- Run IDs and artifact names are checked against strict patterns, so no path can leave
+  the run directory.
 
 ## Git adapter
 
