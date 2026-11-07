@@ -9,6 +9,9 @@ OPENCODE_VERSION="2.2.5"
 
 # Named volumes (see devcontainer.json) are created owned by root. They keep the
 # OpenCode login, OpenCode settings and the GitHub CLI login across rebuilds.
+sudo mkdir -p "$HOME/.local/share"
+sudo chown "$(id -u):$(id -g)" "$HOME/.local" "$HOME/.local/share"
+
 for dir in \
   "$HOME/.local/share/opencode" \
   "$HOME/.config/opencode" \

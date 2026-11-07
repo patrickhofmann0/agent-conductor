@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -104,5 +104,28 @@ describe("createFileRunStore", () => {
     await store.archive(STATE.runId);
     await store.archive("never-started");
     expect((await store.loadState(STATE.runId)).runId).toBe(STATE.runId);
+  });
+
+  it("explains how to fix an unwritable archive directory", async () => {
+    await store.saveState(STATE);
+    const parent = await mkdtemp(join(tmpdir(), "conductor-readonly-"));
+    const blockedArchive = join(parent, "runs");
+    await chmod(parent, 0o555);
+    const blockedStore = createFileRunStore({
+      repository,
+      archiveDirectory: blockedArchive,
+    });
+    try {
+      await expect(blockedStore.archive(STATE.runId)).rejects.toThrow(
+        new RegExp(
+          `Cannot archive run 20261107-ab12 to ".*runs" because access was denied.*XDG_DATA_HOME`,
+        ),
+      );
+    } finally {
+      await chmod(parent, 0o755);
+    }
+    expect(await readFile(join(activeDir(), "state.json"), "utf8")).toContain(
+      STATE.runId,
+    );
   });
 });

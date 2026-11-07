@@ -126,6 +126,8 @@ OpenCode is driven through `@opencode/client` and a private server started by co
 - `archive` moves the run directory to the archive directory (locally
   `~/.local/share/agent-conductor/runs/`). From then on, all reads and writes for that run
   use the archive.
+- If the archive location is not writable, the adapter reports the path, asks the user to
+  check its ownership and permissions, and suggests setting `XDG_DATA_HOME` elsewhere.
 - Run IDs and artifact names are checked against strict patterns, so no path can leave
   the run directory.
 
