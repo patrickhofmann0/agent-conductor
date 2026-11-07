@@ -41,6 +41,14 @@ function isNotFound(error: unknown): boolean {
   return error instanceof Error && "code" in error && error.code === "ENOENT";
 }
 
+function isPermissionError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    "code" in error &&
+    (error.code === "EACCES" || error.code === "EPERM")
+  );
+}
+
 async function move(from: string, to: string): Promise<void> {
   try {
     await rename(from, to);
@@ -48,6 +56,27 @@ async function move(from: string, to: string): Promise<void> {
     // Different file systems (EXDEV) or an existing target: copy, then delete.
     await cp(from, to, { recursive: true, force: true });
     await rm(from, { recursive: true, force: true });
+  }
+}
+
+interface ArchiveRequest {
+  readonly runId: string;
+  readonly source: string;
+  readonly archiveDirectory: string;
+  readonly destination: string;
+}
+
+async function archiveRun(request: ArchiveRequest): Promise<void> {
+  if (!(await exists(request.source))) return;
+  try {
+    await mkdir(request.archiveDirectory, { recursive: true });
+    await move(request.source, request.destination);
+  } catch (error: unknown) {
+    if (!isPermissionError(error)) throw error;
+    throw new Error(
+      `Cannot archive run ${request.runId} to "${request.archiveDirectory}" because access was denied. Check its ownership and permissions, or set XDG_DATA_HOME to a writable directory.`,
+      { cause: error },
+    );
   }
 }
 
@@ -101,11 +130,12 @@ export function createFileRunStore(options: FileRunStoreOptions): RunStore {
         throw error;
       }
     },
-    archive: async (runId) => {
-      const from = active(runId);
-      if (!(await exists(from))) return;
-      await mkdir(options.archiveDirectory, { recursive: true });
-      await move(from, archived(runId));
-    },
+    archive: (runId) =>
+      archiveRun({
+        runId,
+        source: active(runId),
+        archiveDirectory: options.archiveDirectory,
+        destination: archived(runId),
+      }),
   };
 }
