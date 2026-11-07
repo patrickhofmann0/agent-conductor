@@ -5,9 +5,8 @@ enforced by dependency-cruiser (`bun run arch`); the reasoning is in
 [ADR 0009](../adr/0009-ports-and-adapters.md).
 
 > Status: `src/core/` (phase 1) and `src/cli/` exist. Phase 2 of the [plan](../PLAN.md)
-> adds the adapters, starting with `src/adapters/git/`.
-> adds the adapters; `src/adapters/opencode/` is the first one.
-
+> adds the adapters: `src/adapters/opencode/`, `src/adapters/git/` and
+> `src/adapters/checks/` exist.
 
 ## Layers
 
@@ -73,6 +72,8 @@ Rules of thumb:
 
 The published package targets Node.js ≥ 22.12 and may only use `node:*` APIs. Bun is
 used to install, run scripts and bundle ([ADR 0002](../adr/0002-typescript-node-runtime-bun-tooling.md)).
+OpenCode is driven through `@opencode/client` and a private server started by conductor
+([ADR 0012](../adr/0012-opencode-v2-client-and-private-server.md)).
 
 ## Git adapter
 
@@ -91,12 +92,6 @@ used to install, run scripts and bundle ([ADR 0002](../adr/0002-typescript-node-
   overwritten.
 
 ## OpenCode adapter
-
-OpenCode is driven through its SDK and a server started by conductor
-([ADR 0003](../adr/0003-opencode-sdk-and-server.md)).
-
-OpenCode is driven through `@opencode/client` and a private server started by conductor
-([ADR 0012](../adr/0012-opencode-v2-client-and-private-server.md)).
 
 `src/adapters/opencode/` implements the `AgentRunner` port:
 
