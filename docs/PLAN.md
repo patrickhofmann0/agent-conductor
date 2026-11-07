@@ -799,6 +799,29 @@ Akzeptanzkriterien:
   führt zu `failed`
 - Abbruch mit Ctrl-C und anschließendes `resume` funktioniert
 
+### Phase 2b – Nachsteuern
+
+**Ziel:** Ein Mensch kann ein Ergebnis, das ihm noch nicht gefällt, mit Feedback
+nachbessern lassen, ohne von vorn zu beginnen.
+
+Aufgaben:
+
+- [ ] Finales Gate (`gates.final`, Default `false`): nach Reviewer-Freigabe und grünen Pflicht-Checks, vor `finalize`. Anzeige: Verdict-Zusammenfassung, Check-Ergebnisse, geänderte Dateien (Diffstat). Antworten: approve → `finalize`; revise → Feedback wird Finding (`source: human`, `target: coder`), nächste Iteration mit `route: both`, der Reviewer sieht das Feedback; abort
+- [ ] Schema: Finding-Quelle `human`; Gate-Name `final`; Schritt `final_gate` in der State Machine
+- [ ] Feedback am finalen Gate zählt zum Iterationsbudget; bei erschöpftem Budget greift `onLimit`
+- [ ] Run-Store: archivierten Run zurückholen (Gegenstück zu `archive`)
+- [ ] CLI: `conductor revise --no-pr <run-id> "<feedback>"` öffnet einen Run mit Status `done` oder `needs_human` wieder: Run-Branch muss ausgecheckt und sauber sein; Feedback wird Finding; neues Budget (wie `extensions`); weiter ab Coder; am Ende erneut Squash seit `baseCommit` (Branch hat danach wieder genau einen Commit)
+- [ ] Doku: Nachsteuern in `docs/guide/local-usage.md` und `docs/guide/concepts.md`
+
+Akzeptanzkriterien:
+
+- Mit `gates.final: true` führt revise am finalen Gate zu einer weiteren Iteration, deren
+  Ergebnis das Feedback berücksichtigt; approve finalisiert wie bisher
+- `conductor revise` auf einen fertigen Run erzeugt einen Branch mit genau einem Commit,
+  der die alte und die neue Änderung enthält
+- In CI (Phase 3) entspricht das finale Gate einem Review „Changes requested“ auf dem
+  Draft-PR
+
 ### Phase 3 – GitHub-Integration
 
 **Ziel:** Issue als Input, PR als Output, PR-Reviews/Labels als Gate.
