@@ -5,6 +5,13 @@ import type { Finding } from "../schemas/verdict.js";
 /** Framework files that no agent may change, independent of configuration. */
 const ALWAYS_PROTECTED: readonly string[] = [".conductor/**"];
 
+/**
+ * The run state, which the engine rewrites after every step and therefore is
+ * uncommitted while agents work. Agent edits have no effect: the engine keeps
+ * the state in memory and overwrites the file after the step.
+ */
+const FRAMEWORK_STATE: readonly string[] = [".conductor/runs/*/state.json"];
+
 export interface ViolationInput {
   /** Files the agent changed in this phase. */
   readonly changed: readonly string[];
@@ -19,6 +26,7 @@ export function guardrailViolations(input: ViolationInput): string[] {
   const patterns = [...ALWAYS_PROTECTED, ...input.patterns];
   const testerPaths = new Set(input.testerPaths);
   return input.changed
+    .filter((path) => !matchesAny(path, FRAMEWORK_STATE))
     .filter((path) => testerPaths.has(path) || matchesAny(path, patterns))
     .sort();
 }

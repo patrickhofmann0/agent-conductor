@@ -88,6 +88,7 @@ describe("run command", () => {
     expect(code).toBe(0);
     expect(out()).toMatch(/^\S+ done conductor\/\S+-add-csv-export\n$/);
     expect(err()).toContain("po gate: requirements.md");
+    expect(err()).not.toContain("reverted");
     expect(repo.git("rev-list", "--count", "main..HEAD")).toBe("1");
     expect(repo.git("show", "--name-only", "--format=", "HEAD")).toBe(
       "export.ts",

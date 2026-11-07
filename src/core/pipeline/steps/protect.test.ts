@@ -56,7 +56,7 @@ describe("revertViolations", () => {
 
   it("keeps earlier violations of the iteration", async () => {
     const engine = createTestEngine();
-    engine.vcs.change(".conductor/runs/x/state.json");
+    engine.vcs.change(".conductor/runs/x/plan.md");
     const earlier = {
       id: "e",
       severity: "low" as const,

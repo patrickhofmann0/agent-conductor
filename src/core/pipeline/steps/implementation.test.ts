@@ -149,7 +149,7 @@ describe("testerStep", () => {
     });
     engine.agents.script("tester", {
       effect: () => {
-        engine.vcs.change("a.test.ts", ".conductor/runs/x/state.json");
+        engine.vcs.change("a.test.ts", ".conductor/runs/x/plan.md");
       },
     });
 
