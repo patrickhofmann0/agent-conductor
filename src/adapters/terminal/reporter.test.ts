@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { RunEvent } from "../../core/ports/reporter.types.js";
 
-import { createTerminalReporter, formatEvent } from "./reporter.js";
+import { createTerminalReporter, formatEvent, formatUsd } from "./reporter.js";
 
 describe("formatEvent", () => {
   it.each<[RunEvent, string]>([
@@ -41,6 +41,19 @@ describe("formatEvent", () => {
     ],
   ])("formats %j", (event, line) => {
     expect(formatEvent(event)).toBe(line);
+  });
+});
+
+describe("formatUsd", () => {
+  it.each([
+    [0, "$0.00"],
+    [0.00049, "$0.0005"],
+    [0.0021, "$0.0021"],
+    [0.0049, "$0.0049"],
+    [0.01, "$0.01"],
+    [1.4249, "$1.42"],
+  ])("formats %d as %s", (amount, text) => {
+    expect(formatUsd(amount)).toBe(text);
   });
 });
 
