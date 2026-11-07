@@ -778,7 +778,7 @@ Aufgaben:
 - [x] OpenCode-Adapter: Server-Lifecycle (`opencode serve` auf freiem Port), Session pro Phase, Modell + Permissions pro Rolle, harte `git`-Denies, Kosten aus Session-Metadaten, Timeout/Abort
 - [x] Git-Adapter: Branch, Commit, changedFiles, revertPaths, Squash, Push (`--force-with-lease`), Integritätsprüfung (5.3)
 - [x] Check-Runner: Shell-Ausführung, Timeout, Output-Kürzung
-- [ ] Terminal-Gate: Anzeige Artefakt, approve / revise (Editor oder Inline-Feedback) / abort
+- [x] Terminal-Gate: Anzeige Artefakt, approve / revise (Editor oder Inline-Feedback) / abort
 - [ ] StateStore (Datei)
 - [ ] CLI: `run`, `resume`, `validate-config`, `init` (nur `conductor.yaml`), `--no-pr`
 - [ ] Adapter-Tests: Git gegen temporäre Repos; OpenCode-Adapter gegen gemockten HTTP-Server
