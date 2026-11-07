@@ -791,6 +791,7 @@ Aufgaben:
 - [ ] Run-Store: Beim Archivieren leere Ordner `.conductor/runs/` und `.conductor/` im Repo entfernen
 - [ ] CLI: `conductor show <run-id>` zeigt einen Run (offen oder archiviert): Status, Kosten, Verlauf, Requirements, Plan und alle Review-Zwischenergebnisse (`review-<n>.json`: Verdict, Route, Zusammenfassung, Findings mit Schweregrad, Ziel und Datei)
 
+
 Akzeptanzkriterien:
 
 - Lokal gegen ein Test-Repo: ein Run läuft durch alle Phasen und erzeugt einen
