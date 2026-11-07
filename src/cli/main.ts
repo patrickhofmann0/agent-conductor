@@ -5,6 +5,7 @@ import pkg from "../../package.json" with { type: "json" };
 import { initCommand } from "./commands/init.js";
 import { createResumeCommand, createRunCommand } from "./commands/run.js";
 import { runsCommand } from "./commands/runs.js";
+import { showCommand } from "./commands/show.js";
 import { validateConfigCommand } from "./commands/validate-config.js";
 import { openOpencode } from "./engine-setup.js";
 import { describeError, UsageError } from "./errors.js";
@@ -23,6 +24,7 @@ Commands:
   run --no-pr "<task>"     Start a run on a new local branch
   resume --no-pr <run-id>  Continue a paused or interrupted run
   runs                     List open runs in the current repository
+  show <run-id>            Show a run with requirements, plan and all reviews
   validate-config          Check conductor.yaml in the current directory
   init                     Create a commented conductor.yaml
 
@@ -38,6 +40,7 @@ const COMMANDS: Readonly<Record<string, Command>> = {
   run: createRunCommand(openOpencode),
   resume: createResumeCommand(openOpencode),
   runs: runsCommand,
+  show: showCommand,
 };
 
 const OPTIONS = {

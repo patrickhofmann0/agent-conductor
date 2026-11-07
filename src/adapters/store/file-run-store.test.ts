@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { chmod, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -96,6 +97,21 @@ describe("createFileRunStore", () => {
       status: "done",
     });
     expect((await store.loadState(STATE.runId)).status).toBe("done");
+  });
+
+  it("removes the emptied .conductor directories after archiving", async () => {
+    await store.saveState(STATE);
+    await store.archive(STATE.runId);
+    expect(existsSync(join(repository, ".conductor"))).toBe(false);
+  });
+
+  it("keeps .conductor while other runs are still open", async () => {
+    await store.saveState(STATE);
+    await store.saveState({ ...STATE, runId: "other-run" });
+    await store.archive(STATE.runId);
+    expect(
+      existsSync(join(repository, ".conductor", "runs", "other-run")),
+    ).toBe(true);
   });
 
   it("archives a run only once and ignores unknown runs", async () => {

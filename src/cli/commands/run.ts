@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 
 import { resumeRun, startRun } from "../../core/pipeline/engine.js";
 import { formatRunId } from "../../core/pipeline/naming.js";
-import { loadConfig } from "../config-file.js";
+import { loadConfig, NO_CHECKS_WARNING } from "../config-file.js";
 import { withEngine, type OpenAgents } from "../engine-setup.js";
 import { UsageError } from "../errors.js";
 
@@ -35,11 +35,24 @@ function finish(io: CliIo, state: RunState): number {
   return state.status === "failed" || state.status === "aborted" ? 1 : 0;
 }
 
+const NO_CHECKS_BANNER = `
+!!! No checks are configured in conductor.yaml.
+!!! Nothing will run your tests: the reviewer can only read the code.
+!!! Add your test command under "checks" so conductor can verify the result.
+
+`;
+
 async function loadReportedConfig(
   io: CliIo,
 ): Promise<Awaited<ReturnType<typeof loadConfig>>["config"]> {
   const loaded = await loadConfig(io.cwd);
-  for (const warning of loaded.warnings) io.stderr(`warning: ${warning}\n`);
+  for (const warning of loaded.warnings) {
+    io.stderr(
+      warning === NO_CHECKS_WARNING
+        ? NO_CHECKS_BANNER
+        : `warning: ${warning}\n`,
+    );
+  }
   return loaded.config;
 }
 
