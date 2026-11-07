@@ -4,6 +4,7 @@ import {
   readFile,
   rename,
   rm,
+  rmdir,
   stat,
   writeFile,
 } from "node:fs/promises";
@@ -59,7 +60,19 @@ async function move(from: string, to: string): Promise<void> {
   }
 }
 
+/** Removes `directories` in order while they are empty; stops at the first that is not. */
+async function removeEmpty(directories: readonly string[]): Promise<void> {
+  for (const directory of directories) {
+    try {
+      await rmdir(directory);
+    } catch {
+      return;
+    }
+  }
+}
+
 interface ArchiveRequest {
+  readonly repository: string;
   readonly runId: string;
   readonly source: string;
   readonly archiveDirectory: string;
@@ -71,6 +84,8 @@ async function archiveRun(request: ArchiveRequest): Promise<void> {
   try {
     await mkdir(request.archiveDirectory, { recursive: true });
     await move(request.source, request.destination);
+    const runs = join(request.repository, ".conductor", "runs");
+    await removeEmpty([runs, join(request.repository, ".conductor")]);
   } catch (error: unknown) {
     if (!isPermissionError(error)) throw error;
     throw new Error(
@@ -132,6 +147,7 @@ export function createFileRunStore(options: FileRunStoreOptions): RunStore {
     },
     archive: (runId) =>
       archiveRun({
+        repository: options.repository,
         runId,
         source: active(runId),
         archiveDirectory: options.archiveDirectory,
