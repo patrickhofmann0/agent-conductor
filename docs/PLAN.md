@@ -895,3 +895,9 @@ Offene Punkte (vor der jeweiligen Phase zu klären):
 - Copilot in CI
 - Weitere Forges (GitLab)
 - Kosten-/Laufzeit-Reporting über mehrere Runs
+- Lokale Isolation über eigenen Worktree pro Run (`workspace: worktree | in-place`, Default zunächst `in-place`): Repo des Nutzers bleibt frei, parallele Runs möglich. Voraussetzungen:
+  - Run-Daten außerhalb des Arbeitsverzeichnisses (`.git/conductor/runs/<id>/`, Worktree z. B. unter `.git/conductor/worktrees/<id>/`), eigene ADR
+  - `setup`-Befehle in `conductor.yaml` (z. B. `npm ci`), da ein neuer Worktree weder `node_modules` noch ignorierte Dateien wie `.env` hat
+  - Integritätsprüfung auf HEAD und Branch des Worktrees, Tags, `.git/config` und Hooks beschränken (Worktrees teilen Refs; Commits des Nutzers auf anderen Branches dürfen den Run nicht abbrechen)
+  - Lebenszyklus: Worktree bei `done`, `aborted`, `failed` entfernen (Branch bleibt); bei `waiting_for_gate`, Unterbrechung und `needs_human` behalten; Pfad in `runs`/`show` anzeigen
+  - In CI ohne Nutzen (frischer Checkout), daher nur lokal
