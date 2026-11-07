@@ -8,6 +8,8 @@ import { git, splitNul } from "./exec.js";
 import { integritySnapshot } from "./integrity.js";
 
 export interface GitVcs extends Vcs {
+  /** True when there are no staged, unstaged or untracked changes. */
+  isClean(): Promise<boolean>;
   /** Pushes the current branch, refusing to overwrite unseen remote commits. */
   push(remote: string): Promise<void>;
 }
@@ -105,6 +107,8 @@ export function createGitVcs(cwd: string): GitVcs {
       return sha.trim();
     },
     head,
+    isClean: async () =>
+      (await git({ cwd, args: ["status", "--porcelain"] })).trim() === "",
     integritySnapshot: () => integritySnapshot(cwd),
     changedFiles: (since) =>
       withFullIndex(cwd, async (env) =>
