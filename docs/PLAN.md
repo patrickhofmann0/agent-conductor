@@ -785,6 +785,7 @@ Aufgaben:
 - [ ] Fix: `.conductor/runs/*/state.json` von der Leitplanken-Prüfung ausnehmen (wird nach jedem Schritt vom Framework geschrieben und fälschlich als Agent-Änderung zurückgesetzt); CLI-Integrationstest prüft, dass ein normaler Lauf nichts zurücksetzt
 - [ ] Fix: Archivordner nicht beschreibbar → verständliche Fehlermeldung (Hinweis auf `XDG_DATA_HOME`); `.devcontainer/on-create.sh` setzt Besitzer von `~/.local` und `~/.local/share` auf `node`
 - [ ] Kostenanzeige im Terminal-Reporter für kleine Beträge mit mehr Nachkommastellen (z. B. `$0.0021` statt `$0.00`)
+- [ ] CLI: `conductor runs` listet offene Runs im aktuellen Repo (`.conductor/runs/`) mit Run-ID, Status, Schritt, Branch und Start-Zeitpunkt
 
 Akzeptanzkriterien:
 
