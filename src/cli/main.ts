@@ -3,7 +3,9 @@ import { parseArgs } from "node:util";
 import pkg from "../../package.json" with { type: "json" };
 
 import { initCommand } from "./commands/init.js";
+import { createResumeCommand, createRunCommand } from "./commands/run.js";
 import { validateConfigCommand } from "./commands/validate-config.js";
+import { openOpencode } from "./engine-setup.js";
 import { describeError, UsageError } from "./errors.js";
 
 import type { CliIo, Command } from "./cli.types.js";
@@ -17,10 +19,13 @@ const HELP = `Usage: conductor <command> [options]
 Orchestrates AI agents on top of OpenCode to implement features.
 
 Commands:
-  validate-config      Check conductor.yaml in the current directory
-  init                 Create a commented conductor.yaml
+  run --no-pr "<task>"     Start a run on a new local branch
+  resume --no-pr <run-id>  Continue a paused or interrupted run
+  validate-config          Check conductor.yaml in the current directory
+  init                     Create a commented conductor.yaml
 
 Options:
+  --no-pr        Work on a local branch only (required until PR support exists)
   -v, --version  Print the version
   -h, --help     Print this help
 `;
@@ -28,6 +33,8 @@ Options:
 const COMMANDS: Readonly<Record<string, Command>> = {
   "validate-config": validateConfigCommand,
   init: initCommand,
+  run: createRunCommand(openOpencode),
+  resume: createResumeCommand(openOpencode),
 };
 
 const OPTIONS = {
