@@ -104,6 +104,9 @@ model is used.
 Shell commands conductor runs after the tester, in the given order. Their results go to
 the reviewer. A failing **required** check prevents approval.
 
+Without checks, nothing runs your tests: the reviewer may not execute commands and is told
+to judge the changes by reading the code and tests. Configure at least your test command.
+
 | Key                 | Default | Description                                                 |
 | ------------------- | ------- | ----------------------------------------------------------- |
 | `checks[].name`     | –       | Unique name: lowercase letters, digits and dashes           |

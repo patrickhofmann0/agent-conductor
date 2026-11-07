@@ -163,6 +163,21 @@ describe("reviewerTask", () => {
       "## Guardrail violations detected by the framework\n\n- [high] guardrail",
     );
   });
+
+  it("tells the reviewer to judge by reading when no checks are configured", () => {
+    const task = reviewerTask({
+      requirements: "R",
+      plan: "P",
+      iteration: 1,
+      diff: "+a",
+      checkResults: [],
+      violations: [],
+    });
+
+    expect(task).toContain(
+      "## Check results\n\nNo automated checks are configured for this repository, and you cannot run commands. Judge the changes by reading the code and the tests. Do not withhold approval only because the tests were not executed;",
+    );
+  });
 });
 
 describe("reviewerRetryTask", () => {
