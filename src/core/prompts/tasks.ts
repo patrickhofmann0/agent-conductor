@@ -109,6 +109,19 @@ export interface ReviewTaskInput {
   readonly violations: readonly Finding[];
 }
 
+/**
+ * Without configured checks nothing executes the tests, and the reviewer may not
+ * run commands. Say so, or the reviewer waits for test results that never come.
+ */
+const NO_CHECKS_FOR_REVIEW =
+  "No automated checks are configured for this repository, and you cannot run commands. Judge the changes by reading the code and the tests. Do not withhold approval only because the tests were not executed; if unverified behavior matters, report it as a low-severity finding.";
+
+function reviewCheckResults(results: readonly CheckResult[]): string {
+  return results.length === 0
+    ? NO_CHECKS_FOR_REVIEW
+    : formatCheckResults(results);
+}
+
 export function reviewerTask(task: ReviewTaskInput): string {
   return joinSections([
     section("Requirements", task.requirements),
@@ -117,7 +130,7 @@ export function reviewerTask(task: ReviewTaskInput): string {
       `Changes so far (iteration ${String(task.iteration)})`,
       `\`\`\`diff\n${task.diff}\n\`\`\``,
     ),
-    section("Check results", formatCheckResults(task.checkResults)),
+    section("Check results", reviewCheckResults(task.checkResults)),
     section(
       "Guardrail violations detected by the framework",
       formatFindings(task.violations),
