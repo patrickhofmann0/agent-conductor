@@ -93,6 +93,12 @@ requirements and the plan and asks:
   `#` are ignored
 - `x` abort, with an optional reason
 
+With `gates.final: true`, conductor also stops before finishing an approved result and
+shows the reviewer's summary, the check results and the changed files. If you are not
+happy yet, answer `r` or `e` with what should change: the coder and tester work on it in
+another iteration, and the reviewer checks that your feedback was addressed. These
+iterations do not count towards `loop.maxIterations`.
+
 With `loop.onLimit: ask`, conductor also asks at a limit whether to continue with
 another budget, finish as a draft or abort.
 
