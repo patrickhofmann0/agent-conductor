@@ -15,8 +15,10 @@ async function decide(
   state: RunState,
   verdict: Verdict,
 ): Promise<RunState> {
-  if (verdict.verdict === "approve")
-    return { ...state, step: "finalize", findings: [] };
+  if (verdict.verdict === "approve") {
+    const step = ctx.config.gates.final ? "final_gate" : "finalize";
+    return { ...state, step, findings: [] };
+  }
   const findings = mergeFindings(verdict.findings, state.violations);
   const next = nextIteration(state, verdict.route, findings);
   const breach = iterationBreach(ctx.config, state);
@@ -35,6 +37,7 @@ export const reviewStep: StepHandler = async (ctx, state) => {
     diff: await ctx.deps.vcs.diff(state.baseCommit),
     checkResults: state.checkResults,
     violations: state.violations,
+    humanFeedback: state.findings.filter((f) => f.source === "human"),
   });
   const outcome = await obtainVerdict(ctx, state, prompt);
   if (outcome.kind === "stopped") return outcome.state;

@@ -23,6 +23,7 @@ language: en
 gates:
   po: true
   planner: true
+  final: false # set to true to give feedback before the result is finished
 
 loop:
   maxIterations: 3

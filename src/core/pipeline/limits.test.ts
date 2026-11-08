@@ -71,6 +71,18 @@ describe("iterationBreach", () => {
     });
   });
 
+  it("does not count iterations started by human feedback", () => {
+    expect(
+      iterationBreach(config, { ...base, iteration: 4, humanIterations: 2 }),
+    ).toBeNull();
+    expect(
+      iterationBreach(config, { ...base, iteration: 5, humanIterations: 2 }),
+    ).toEqual({
+      kind: "iterations",
+      detail: "Iteration limit reached: 3 of 3 review rounds without approval.",
+    });
+  });
+
   it("grants more iterations per extension", () => {
     expect(
       iterationBreach(config, { ...base, iteration: 5, extensions: 1 }),

@@ -26,7 +26,9 @@ flowchart TD
         reviewer -- "route: tester" --> tester
         reviewer -- "route: both" --> coder
     end
-    reviewer -- approve --> finalize[Squash and publish]
+    reviewer -- approve --> g3{{"Final gate (optional)"}}
+    g3 -- revise --> coder
+    g3 -- approve --> finalize[Squash and publish]
 ```
 
 Every run gets its own branch (`conductor/<run-id>-<title>`). The phases are fixed; what
@@ -64,10 +66,20 @@ implementation starts. Both gates are on by default. A human can:
   feedback,
 - **abort** the run.
 
-Locally, the gate is a prompt in the terminal. In GitHub Actions, the run publishes a
-draft pull request, stops and continues when the pull request is approved (or labeled
-`conductor:approved`); requested changes become the feedback. Time spent waiting at a
-gate does not count towards the time limit.
+Locally, the gate is a prompt in the terminal; feedback can be typed there or written in
+your editor (see [Running locally](local-usage.md#gates)). In GitHub Actions, the run
+publishes a draft pull request, stops and continues when the pull request is approved
+(or labeled `conductor:approved`); requested changes become the feedback. Time spent
+waiting at a gate does not count towards the time limit.
+
+The optional **final gate** (`gates.final`, off by default) pauses after the reviewer has
+approved and all required checks pass. It shows the reviewer's summary, the check results
+and the changed files. **Approve** finishes the run. **Revise** turns the feedback into a
+finding for the coder and starts another iteration with coder and tester; the reviewer is
+asked to verify that the feedback was addressed. **Abort** stops the run. As at the other
+gates, the feedback can be typed in the terminal or written in the editor. Iterations
+started this way do not count towards the iteration limit; cost and time limits still
+apply.
 
 ## The review loop
 
@@ -105,12 +117,12 @@ conductor protects what makes the result trustworthy:
 
 ## Limits
 
-| Limit      | Default | Counts                                   |
-| ---------- | ------- | ---------------------------------------- |
-| Iterations | 3       | Review rounds without approval           |
-| Cost       | $10     | Model cost reported by OpenCode          |
-| Total time | 2 h     | Time spent working, not waiting at gates |
-| Phase time | 20 min  | One agent session                        |
+| Limit      | Default | Counts                                                                        |
+| ---------- | ------- | ----------------------------------------------------------------------------- |
+| Iterations | 3       | Review rounds without approval, not counting rounds started by human feedback |
+| Cost       | $10     | Model cost reported by OpenCode                                               |
+| Total time | 2 h     | Time spent working, not waiting at gates                                      |
+| Phase time | 20 min  | One agent session                                                             |
 
 When a limit is hit, or an agent fails or times out, `loop.onLimit` decides:
 

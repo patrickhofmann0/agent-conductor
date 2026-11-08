@@ -89,12 +89,38 @@ requirements and the plan and asks:
 
 - `a` approve
 - `r` revise: type your feedback and finish it with an empty line
-- `e` revise in your editor (`$VISUAL`, then `$EDITOR`, then `vi`); lines starting with
-  `#` are ignored
+- `e` revise in your editor: write the feedback in a file instead of the terminal (see
+  [Writing feedback in the editor](#writing-feedback-in-the-editor))
 - `x` abort, with an optional reason
+
+With `gates.final: true`, conductor also stops before finishing an approved result and
+shows the reviewer's summary, the check results and the changed files. If you are not
+happy yet, answer `r` or `e` with what should change: the coder and tester work on it in
+another iteration, and the reviewer checks that your feedback was addressed. These
+iterations do not count towards `loop.maxIterations`.
 
 With `loop.onLimit: ask`, conductor also asks at a limit whether to continue with
 another budget, finish as a draft or abort.
+
+### Writing feedback in the editor
+
+With `e`, conductor creates a temporary file `FEEDBACK.md` and opens it in your editor:
+
+1. The editor command is taken from `$VISUAL`, then `$EDITOR`; without either, `vi`
+   is used. The file path is appended to the command.
+2. The file starts with comment lines that name the document and the gate. Write your
+   feedback below them; it can span several lines and use Markdown.
+3. Save the file and close the editor. conductor waits until the editor exits, removes
+   all lines starting with `#` and uses the rest as feedback.
+4. If the remaining text is empty, or the editor exits with an error, nothing is sent
+   and conductor asks again.
+
+The editor must block until you close the file. Terminal editors such as `vi` or `nano`
+do this; for VS Code, use `--wait`:
+
+```bash
+export EDITOR="code --wait"
+```
 
 ## Interrupting and resuming
 

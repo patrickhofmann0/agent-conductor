@@ -8,7 +8,11 @@ import {
 
 import { renderGateBody } from "../pr-body.js";
 
-import { plannerGateStep, productOwnerGateStep } from "./gates.js";
+import {
+  finalGateStep,
+  plannerGateStep,
+  productOwnerGateStep,
+} from "./gates.js";
 
 async function engineWithDocuments() {
   const engine = createTestEngine();
@@ -136,6 +140,109 @@ describe("plannerGateStep", () => {
     expect(state).toMatchObject({
       step: "planner",
       gateFeedback: "Smaller steps",
+    });
+  });
+});
+
+describe("finalGateStep", () => {
+  const approved = {
+    step: "final_gate" as const,
+    iteration: 2,
+    lastVerdict: {
+      verdict: "approve" as const,
+      route: "both" as const,
+      summary: "All criteria met.",
+      findings: [],
+    },
+    checkResults: [
+      {
+        name: "test",
+        required: true,
+        passed: true,
+        exitCode: 0,
+        timedOut: false,
+        durationMs: 10,
+        output: "ok",
+      },
+    ],
+  };
+
+  it("shows the review summary, checks and changed files", async () => {
+    const engine = createTestEngine({ gates: { final: true } });
+    engine.vcs.change("src/export.ts", "test/export.test.ts");
+
+    await finalGateStep(engine.ctx, newState(approved));
+
+    expect(engine.gates.requests).toEqual([
+      {
+        runId: RUN_ID,
+        gate: "final",
+        artifactName: "summary.md",
+        artifact: [
+          "# Result",
+          "## Review (iteration 2)",
+          "All criteria met.",
+          "## Checks",
+          "- test (required): passed",
+          "## Changed files",
+          "- src/export.ts\n- test/export.test.ts",
+        ].join("\n\n"),
+      },
+    ]);
+    expect(engine.publisher.published[0]?.stage).toBe("gate");
+  });
+
+  it("covers a run without review or changes", async () => {
+    const engine = createTestEngine({ gates: { final: true } });
+
+    await finalGateStep(engine.ctx, newState({ step: "final_gate" }));
+
+    const artifact = engine.gates.requests[0]?.artifact ?? "";
+    expect(artifact).toContain("No review yet.");
+    expect(artifact).toContain("## Changed files\n\nNone.");
+  });
+
+  it("finalizes on approval", async () => {
+    const engine = createTestEngine({ gates: { final: true } });
+
+    const state = await finalGateStep(engine.ctx, newState(approved));
+
+    expect(state.step).toBe("finalize");
+    expect(state.status).toBe("running");
+  });
+
+  it("starts a human iteration with the feedback for the coder", async () => {
+    const engine = createTestEngine({ gates: { final: true } });
+    engine.gates.decide("final", { kind: "revise", feedback: "Add a header" });
+
+    const state = await finalGateStep(engine.ctx, newState(approved));
+
+    expect(state).toMatchObject({
+      step: "coder",
+      iteration: 3,
+      humanIterations: 1,
+      route: "both",
+      findings: [
+        {
+          id: "human-feedback-3",
+          severity: "high",
+          target: "coder",
+          message: "Add a header",
+          source: "human",
+        },
+      ],
+    });
+  });
+
+  it("aborts on request", async () => {
+    const engine = createTestEngine({ gates: { final: true } });
+    engine.gates.decide("final", { kind: "abort", reason: "Wrong approach" });
+
+    const state = await finalGateStep(engine.ctx, newState(approved));
+
+    expect(state).toMatchObject({
+      status: "aborted",
+      outcome: "Wrong approach",
     });
   });
 });

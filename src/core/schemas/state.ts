@@ -13,6 +13,7 @@ export const STEPS = [
   "tester",
   "checks",
   "review",
+  "final_gate",
   "finalize",
 ] as const;
 
@@ -60,6 +61,8 @@ export const runStateSchema = z.strictObject({
   step: stepSchema,
   /** Review-loop iteration, 0 before the loop starts. */
   iteration: z.int().min(0),
+  /** Iterations started by human feedback; they do not count toward the limit. */
+  humanIterations: z.int().min(0).default(0),
   /** Roles that run in the current iteration. */
   route: routeSchema,
   input: runInputSchema,

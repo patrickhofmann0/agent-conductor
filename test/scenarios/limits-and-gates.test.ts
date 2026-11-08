@@ -182,3 +182,45 @@ describe("scenario: gates", () => {
     },
   );
 });
+
+describe("scenario: final gate", () => {
+  it("lets a human ask for changes without using up the iteration limit", async () => {
+    const engine = createTestEngine({
+      gates: { ...noGates, final: true },
+      loop: { maxIterations: 1, onLimit: "fail" },
+    });
+    engine.gates.decide(
+      "final",
+      { kind: "revise", feedback: "Add a header row" },
+      { kind: "approve" },
+    );
+
+    const state = await startRun(engine.ctx, { runId: RUN_ID, input });
+
+    expect(state).toMatchObject({
+      status: "done",
+      iteration: 2,
+      humanIterations: 1,
+    });
+    expect(engine.gates.requests.map((request) => request.gate)).toEqual([
+      "final",
+      "final",
+    ]);
+    expect(engine.agents.requestsFor("coder")[1]?.prompt).toContain(
+      "Add a header row",
+    );
+    expect(engine.agents.requestsFor("reviewer")[1]?.prompt).toContain(
+      "## Feedback from a human",
+    );
+    expect(engine.vcs.squashes).toHaveLength(1);
+  });
+
+  it("is skipped unless enabled", async () => {
+    const engine = createTestEngine({ gates: noGates });
+
+    const state = await startRun(engine.ctx, { runId: RUN_ID, input });
+
+    expect(state.status).toBe("done");
+    expect(engine.gates.requests).toEqual([]);
+  });
+});

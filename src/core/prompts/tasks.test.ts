@@ -164,6 +164,29 @@ describe("reviewerTask", () => {
     );
   });
 
+  it("adds human feedback only when there is some", () => {
+    const input = {
+      requirements: "R",
+      plan: "P",
+      iteration: 2,
+      diff: "+a",
+      checkResults: [failedCheck],
+      violations: [],
+    };
+    const human = {
+      ...coderFinding,
+      id: "human-feedback-2",
+      source: "human" as const,
+    };
+
+    expect(reviewerTask({ ...input, humanFeedback: [] })).not.toContain(
+      "Feedback from a human",
+    );
+    expect(reviewerTask({ ...input, humanFeedback: [human] })).toContain(
+      "## Feedback from a human (verify it was addressed)\n\n- [high] human-feedback-2",
+    );
+  });
+
   it("tells the reviewer to judge by reading when no checks are configured", () => {
     const task = reviewerTask({
       requirements: "R",

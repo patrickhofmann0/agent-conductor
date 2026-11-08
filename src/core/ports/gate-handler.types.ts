@@ -1,4 +1,4 @@
-export type GateName = "po" | "planner";
+export type GateName = "po" | "planner" | "final";
 
 export interface GateRequest {
   readonly runId: string;

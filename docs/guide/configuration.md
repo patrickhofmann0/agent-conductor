@@ -79,10 +79,11 @@ model is used.
 
 ### Gates
 
-| Key             | Default | Description                                  |
-| --------------- | ------- | -------------------------------------------- |
-| `gates.po`      | `true`  | Pause for human approval of the requirements |
-| `gates.planner` | `true`  | Pause for human approval of the plan         |
+| Key             | Default | Description                                                                                                                  |
+| --------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `gates.po`      | `true`  | Pause for human approval of the requirements                                                                                 |
+| `gates.planner` | `true`  | Pause for human approval of the plan                                                                                         |
+| `gates.final`   | `false` | Pause before finishing an approved result; feedback starts another iteration that does not count toward `loop.maxIterations` |
 
 ### Review loop
 

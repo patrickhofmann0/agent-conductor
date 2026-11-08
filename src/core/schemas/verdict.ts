@@ -10,7 +10,7 @@ export const findingSchema = z.object({
   line: z.int().positive().optional(),
   message: z.string().min(1),
   suggestion: z.string().min(1).optional(),
-  source: z.enum(["reviewer", "framework"]).default("reviewer"),
+  source: z.enum(["reviewer", "framework", "human"]).default("reviewer"),
 });
 
 export type Finding = z.output<typeof findingSchema>;

@@ -39,15 +39,19 @@ export function budgetBreach(
   return null;
 }
 
-/** True when the review loop may not start another iteration. */
+/**
+ * True when the review loop may not start another iteration. Iterations
+ * started by human feedback do not count.
+ */
 export function iterationBreach(
   config: Config,
   state: RunState,
 ): LimitBreach | null {
   const maxIterations = config.loop.maxIterations * budgetFactor(state);
-  if (state.iteration < maxIterations) return null;
+  const rounds = state.iteration - state.humanIterations;
+  if (rounds < maxIterations) return null;
   return {
     kind: "iterations",
-    detail: `Iteration limit reached: ${String(state.iteration)} of ${String(maxIterations)} review rounds without approval.`,
+    detail: `Iteration limit reached: ${String(rounds)} of ${String(maxIterations)} review rounds without approval.`,
   };
 }

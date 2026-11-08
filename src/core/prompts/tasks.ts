@@ -107,6 +107,8 @@ export interface ReviewTaskInput {
   readonly diff: string;
   readonly checkResults: readonly CheckResult[];
   readonly violations: readonly Finding[];
+  /** Change requests from a human at the final gate; the reviewer checks them. */
+  readonly humanFeedback?: readonly Finding[];
 }
 
 /**
@@ -135,6 +137,12 @@ export function reviewerTask(task: ReviewTaskInput): string {
       "Guardrail violations detected by the framework",
       formatFindings(task.violations),
     ),
+    task.humanFeedback === undefined || task.humanFeedback.length === 0
+      ? null
+      : section(
+          "Feedback from a human (verify it was addressed)",
+          formatFindings(task.humanFeedback),
+        ),
   ]);
 }
 

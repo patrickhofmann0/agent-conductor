@@ -42,6 +42,36 @@ function changesRequested(
 }
 
 describe("reviewStep", () => {
+  it("goes to the final gate after approval when it is enabled", async () => {
+    const engine = createTestEngine({ gates: { final: true } });
+
+    const state = await reviewStep(engine.ctx, await loopState(engine));
+
+    expect(state.step).toBe("final_gate");
+  });
+
+  it("shows human feedback to the reviewer", async () => {
+    const engine = createTestEngine();
+    const human: Finding = {
+      id: "human-feedback-2",
+      severity: "high",
+      target: "coder",
+      message: "Add a header row",
+      source: "human",
+    };
+
+    await reviewStep(
+      engine.ctx,
+      await loopState(engine, { iteration: 2, findings: [finding, human] }),
+    );
+
+    const prompt = engine.agents.requestsFor("reviewer")[0]?.prompt ?? "";
+    expect(prompt).toContain(
+      "## Feedback from a human (verify it was addressed)\n\n- [high] human-feedback-2: Add a header row",
+    );
+    expect(prompt).not.toContain("Weak test");
+  });
+
   it("gives the reviewer documents, diff, checks and violations", async () => {
     const engine = createTestEngine();
 
