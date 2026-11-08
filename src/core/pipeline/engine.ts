@@ -4,7 +4,11 @@ import { branchName } from "./naming.js";
 import { handleLimit } from "./on-limit.js";
 import { plannerStep, productOwnerStep } from "./steps/documents.js";
 import { finalizeStep } from "./steps/finalize.js";
-import { plannerGateStep, productOwnerGateStep } from "./steps/gates.js";
+import {
+  finalGateStep,
+  plannerGateStep,
+  productOwnerGateStep,
+} from "./steps/gates.js";
 import { checksStep, coderStep, testerStep } from "./steps/implementation.js";
 import { reviewStep } from "./steps/review.js";
 
@@ -20,6 +24,7 @@ const HANDLERS: Readonly<Record<Step, StepHandler>> = {
   tester: testerStep,
   checks: checksStep,
   review: reviewStep,
+  final_gate: finalGateStep,
   finalize: finalizeStep,
 };
 
@@ -27,6 +32,7 @@ const HANDLERS: Readonly<Record<Step, StepHandler>> = {
 const UNBUDGETED: ReadonlySet<Step> = new Set<Step>([
   "po_gate",
   "planner_gate",
+  "final_gate",
   "finalize",
 ]);
 

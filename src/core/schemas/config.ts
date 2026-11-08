@@ -66,6 +66,7 @@ export const configSchema = z.strictObject({
     .strictObject({
       po: z.boolean().default(true),
       planner: z.boolean().default(true),
+      final: z.boolean().default(false),
     })
     .prefault({}),
   loop: z

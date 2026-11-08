@@ -19,6 +19,7 @@ export function createRunState(run: NewRun): RunState {
     status: "running",
     step: "po",
     iteration: 0,
+    humanIterations: 0,
     route: "both",
     input: run.input,
     baseCommit: run.baseCommit,

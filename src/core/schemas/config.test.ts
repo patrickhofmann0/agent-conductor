@@ -8,7 +8,7 @@ describe("configSchema defaults", () => {
       version: 1,
       language: "en",
       models: {},
-      gates: { po: true, planner: true },
+      gates: { po: true, planner: true, final: false },
       loop: { maxIterations: 3, onLimit: "draft_pr" },
       limits: {
         phaseTimeout: 1_200_000,
@@ -70,7 +70,7 @@ describe("configSchema defaults", () => {
       default: "openai/gpt-5",
       reviewer: "openai/o3#high",
     });
-    expect(config.gates).toEqual({ po: false, planner: true });
+    expect(config.gates).toEqual({ po: false, planner: true, final: false });
     expect(config.loop).toEqual({ maxIterations: 5, onLimit: "ask" });
     expect(config.limits).toEqual({
       phaseTimeout: 300_000,

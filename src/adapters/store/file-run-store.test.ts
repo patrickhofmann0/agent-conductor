@@ -16,6 +16,7 @@ const STATE: RunState = {
   status: "waiting_for_gate",
   step: "po_gate",
   iteration: 0,
+  humanIterations: 0,
   route: "both",
   input: { kind: "prompt", title: "CSV export", body: "Add CSV export." },
   baseCommit: "abc123",

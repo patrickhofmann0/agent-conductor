@@ -8,6 +8,7 @@ const state = {
   status: "running",
   step: "po",
   iteration: 0,
+  humanIterations: 0,
   route: "both",
   input: {
     kind: "issue",
@@ -68,6 +69,12 @@ describe("runStateSchema", () => {
     expect(runStateSchema.parse(later)).toEqual(later);
   });
 
+  it("defaults humanIterations for states saved before it existed", () => {
+    const older: Record<string, unknown> = { ...state };
+    delete older["humanIterations"];
+    expect(runStateSchema.parse(older).humanIterations).toBe(0);
+  });
+
   it("lists steps in pipeline order", () => {
     expect(STEPS).toEqual([
       "po",
@@ -78,6 +85,7 @@ describe("runStateSchema", () => {
       "tester",
       "checks",
       "review",
+      "final_gate",
       "finalize",
     ]);
   });
