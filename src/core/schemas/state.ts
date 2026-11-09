@@ -61,7 +61,10 @@ export const runStateSchema = z.strictObject({
   step: stepSchema,
   /** Review-loop iteration, 0 before the loop starts. */
   iteration: z.int().min(0),
-  /** Iterations started by human feedback; they do not count toward the limit. */
+  /**
+   * Iterations that do not count toward the limit: those started by human
+   * feedback, and all iterations before a `revise`.
+   */
   humanIterations: z.int().min(0).default(0),
   /** Roles that run in the current iteration. */
   route: routeSchema,
@@ -72,6 +75,9 @@ export const runStateSchema = z.strictObject({
   /** Time spent working, excluding time waiting at gates. */
   activeMs: z.number().min(0),
   costUsd: z.number().min(0),
+  /** Cost and active time before the last `revise`; budgets count from there. */
+  costOffsetUsd: z.number().min(0).default(0),
+  activeOffsetMs: z.number().min(0).default(0),
   /** Number of times a human granted another budget after a limit was hit. */
   extensions: z.int().min(0),
   /** Set when a limit was hit and the run finishes as a draft for a human. */

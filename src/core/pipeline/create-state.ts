@@ -27,6 +27,8 @@ export function createRunState(run: NewRun): RunState {
     startedAt: run.startedAt,
     activeMs: 0,
     costUsd: 0,
+    costOffsetUsd: 0,
+    activeOffsetMs: 0,
     extensions: 0,
     needsHuman: false,
     testerPaths: [],

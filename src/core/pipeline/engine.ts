@@ -2,6 +2,7 @@ import { createRunState } from "./create-state.js";
 import { budgetBreach } from "./limits.js";
 import { branchName } from "./naming.js";
 import { handleLimit } from "./on-limit.js";
+import { startHumanIteration } from "./transitions.js";
 import { plannerStep, productOwnerStep } from "./steps/documents.js";
 import { finalizeStep } from "./steps/finalize.js";
 import {
@@ -119,4 +120,39 @@ export async function resumeRun(
   }
   if (state.status === "running") return runPipeline(ctx, state);
   return state;
+}
+
+const REVISABLE: ReadonlySet<RunState["status"]> = new Set<RunState["status"]>([
+  "done",
+  "needs_human",
+]);
+
+/**
+ * Reopens a finished run with human feedback (phase 2b): coder and tester work
+ * on it, and the iteration limit and the cost and time budgets start afresh.
+ */
+export async function reviseRun(
+  ctx: EngineContext,
+  runId: string,
+  feedback: string,
+): Promise<RunState> {
+  const state = await ctx.deps.store.loadState(runId);
+  if (!REVISABLE.has(state.status)) {
+    throw new Error(
+      `Run ${runId} is ${state.status}; only finished runs (done or needs_human) can be revised. Use resume instead.`,
+    );
+  }
+  await ctx.deps.store.restore(runId);
+  const next = startHumanIteration(state, feedback);
+  const reopened: RunState = {
+    ...next,
+    status: "running",
+    outcome: null,
+    needsHuman: false,
+    humanIterations: next.iteration,
+    costOffsetUsd: state.costUsd,
+    activeOffsetMs: state.activeMs,
+  };
+  await ctx.deps.store.saveState(reopened);
+  return runPipeline(ctx, reopened);
 }

@@ -24,6 +24,8 @@ const STATE: RunState = {
   startedAt: 0,
   activeMs: 1000,
   costUsd: 0.3,
+  costOffsetUsd: 0,
+  activeOffsetMs: 0,
   extensions: 0,
   needsHuman: false,
   testerPaths: [],
