@@ -154,5 +154,8 @@ export async function reviseRun(
     activeOffsetMs: state.activeMs,
   };
   await ctx.deps.store.saveState(reopened);
+  // Commit the restored run files, so the guardrail check after the coder
+  // does not take them for new framework files and remove them.
+  await ctx.deps.vcs.commit(`chore(conductor): reopen run ${runId}`);
   return runPipeline(ctx, reopened);
 }

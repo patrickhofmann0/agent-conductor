@@ -245,6 +245,9 @@ describe("scenario: revise a finished run", () => {
     expect(engine.agents.requestsFor("reviewer")[1]?.prompt).toContain(
       "## Feedback from a human",
     );
+    expect(engine.vcs.commits.map((commit) => commit.message)).toContain(
+      `chore(conductor): reopen run ${RUN_ID}`,
+    );
     expect(engine.vcs.squashes).toHaveLength(2);
     expect(engine.vcs.squashes[1]?.since).toBe("base");
   });
