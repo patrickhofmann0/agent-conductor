@@ -810,7 +810,7 @@ Aufgaben:
 - [x] Schema: Finding-Quelle `human`; Gate-Name `final`; Schritt `final_gate` in der State Machine
 - [x] Iterationen, die durch menschliches Feedback (finales Gate oder `revise`) ausgelöst werden, zählen nicht zum Iterationslimit (`loop.maxIterations` gilt nur für Reviewer-Runden); Kosten- und Zeitlimits gelten weiter
 - [x] Run-Store: archivierten Run zurückholen (Gegenstück zu `archive`)
-- [ ] CLI: `conductor revise --no-pr <run-id> "<feedback>"` öffnet einen Run mit Status `done` oder `needs_human` wieder: Run-Branch muss ausgecheckt und sauber sein; Feedback wird Finding; Reviewer-Runden zählen ab hier neu, Kosten- und Zeitbudget werden erneuert (wie `extensions`); weiter ab Coder; am Ende erneut Squash seit `baseCommit` (Branch hat danach wieder genau einen Commit)
+- [x] CLI: `conductor revise --no-pr <run-id> "<feedback>"` öffnet einen Run mit Status `done` oder `needs_human` wieder: Run-Branch muss ausgecheckt und sauber sein; Feedback wird Finding; Reviewer-Runden zählen ab hier neu, Kosten- und Zeitbudget werden erneuert (wie `extensions`); weiter ab Coder; am Ende erneut Squash seit `baseCommit` (Branch hat danach wieder genau einen Commit)
 - [ ] Doku: Nachsteuern in `docs/guide/local-usage.md` und `docs/guide/concepts.md`
 
 Akzeptanzkriterien:

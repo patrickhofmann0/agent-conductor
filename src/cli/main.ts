@@ -3,6 +3,7 @@ import { parseArgs } from "node:util";
 import pkg from "../../package.json" with { type: "json" };
 
 import { initCommand } from "./commands/init.js";
+import { createReviseCommand } from "./commands/revise.js";
 import { createResumeCommand, createRunCommand } from "./commands/run.js";
 import { runsCommand } from "./commands/runs.js";
 import { showCommand } from "./commands/show.js";
@@ -23,6 +24,8 @@ Orchestrates AI agents on top of OpenCode to implement features.
 Commands:
   run --no-pr "<task>"     Start a run on a new local branch
   resume --no-pr <run-id>  Continue a paused or interrupted run
+  revise --no-pr <run-id> "<feedback>"
+                           Reopen a finished run and address the feedback
   runs                     List open runs in the current repository
   show <run-id>            Show a run with requirements, plan and all reviews
   validate-config          Check conductor.yaml in the current directory
@@ -39,6 +42,7 @@ const COMMANDS: Readonly<Record<string, Command>> = {
   init: initCommand,
   run: createRunCommand(openOpencode),
   resume: createResumeCommand(openOpencode),
+  revise: createReviseCommand(openOpencode),
   runs: runsCommand,
   show: showCommand,
 };
