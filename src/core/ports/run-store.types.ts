@@ -15,4 +15,6 @@ export interface RunStore {
    * saveState/loadState calls use the archived location.
    */
   archive(runId: string): Promise<void>;
+  /** Moves an archived run back into the working tree; the reverse of archive. */
+  restore(runId: string): Promise<void>;
 }

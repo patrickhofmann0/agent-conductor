@@ -115,6 +115,29 @@ describe("createFileRunStore", () => {
     ).toBe(true);
   });
 
+  it("restores an archived run into the working tree", async () => {
+    await store.saveState(STATE);
+    await store.writeArtifact(STATE.runId, "plan.md", "# Plan\n");
+    await store.archive(STATE.runId);
+    await store.restore(STATE.runId);
+    expect(await readFile(join(activeDir(), "plan.md"), "utf8")).toBe(
+      "# Plan\n",
+    );
+    expect(existsSync(join(archiveDirectory, STATE.runId))).toBe(false);
+    await store.saveState({ ...STATE, status: "running" });
+    expect((await store.loadState(STATE.runId)).status).toBe("running");
+    expect(
+      JSON.parse(await readFile(join(activeDir(), "state.json"), "utf8")),
+    ).toMatchObject({ status: "running" });
+  });
+
+  it("ignores restoring a run that is not archived", async () => {
+    await store.saveState(STATE);
+    await store.restore(STATE.runId);
+    await store.restore("never-started");
+    expect((await store.loadState(STATE.runId)).runId).toBe(STATE.runId);
+  });
+
   it("archives a run only once and ignores unknown runs", async () => {
     await store.saveState(STATE);
     await store.archive(STATE.runId);
