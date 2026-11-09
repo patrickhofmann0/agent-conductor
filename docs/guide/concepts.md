@@ -99,6 +99,14 @@ approval into a change request for the coder.
 
 After approval, conductor squashes all commits into one and publishes the pull request.
 
+## Revising a result
+
+A finished run (`done` or `needs_human`) can be reopened with `conductor revise` and
+human feedback. The feedback becomes a finding for the coder, coder and tester work on it
+in a new iteration, and the review loop continues as usual. The iteration limit and the
+cost and time budgets count from the revision on. The branch ends up with one commit
+again, so the result looks as if the run had produced it directly.
+
 ## Guardrails
 
 conductor protects what makes the result trustworthy:
@@ -143,6 +151,8 @@ stateDiagram-v2
     running --> needs_human: limit hit (draft_pr)
     running --> failed: limit hit (fail) or git touched
     running --> aborted: human aborted
+    done --> running: revise
+    needs_human --> running: revise
     done --> [*]
     needs_human --> [*]
     failed --> [*]

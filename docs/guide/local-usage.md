@@ -75,12 +75,13 @@ git show
 | `conductor validate-config`              | Checks `conductor.yaml` and prints warnings                |
 | `conductor run --no-pr "Add CSV export"` | Starts a run on a new branch `conductor/<run-id>-<slug>`   |
 | `conductor resume --no-pr <run-id>`      | Continues a run that was interrupted or waits at a gate    |
+| `conductor revise --no-pr <run-id> "…"`  | Reopens a finished run with feedback (see below)           |
 | `conductor runs`                         | Lists open runs: ID, status, step, branch and start time   |
 | `conductor show <run-id>`                | Shows a run with history, requirements, plan and reviews   |
 
 All commands work in the current directory, which must be the repository root. Progress
-and questions go to stderr; `run` and `resume` print one result line to stdout:
-`<run-id> <status> <branch>`.
+and questions go to stderr; `run`, `resume` and `revise` print one result line to
+stdout: `<run-id> <status> <branch>`.
 
 ## Gates
 
@@ -121,6 +122,25 @@ do this; for VS Code, use `--wait`:
 ```bash
 export EDITOR="code --wait"
 ```
+
+## Changing a finished result
+
+If you are not happy with a finished run (`done` or `needs_human`), give feedback instead
+of starting over:
+
+```bash
+git switch conductor/<run-id>-<slug>   # the run's branch, with a clean working tree
+conductor revise --no-pr <run-id> "Print the date in ISO format and add a --help flag"
+```
+
+conductor moves the run back from the archive, gives your feedback to the coder and runs
+coder, tester, checks and reviewer again; the reviewer checks that your feedback was
+addressed. The iteration limit and the cost and time budgets start afresh. At the end,
+the branch again has exactly one commit, containing the earlier and the new changes.
+Run `revise` as often as you like.
+
+To give feedback before a run finishes, enable the final gate (`gates.final: true`, see
+[Gates](#gates)).
 
 ## Interrupting and resuming
 
