@@ -21,6 +21,8 @@ const state = {
   startedAt: 1_700_000_000_000,
   activeMs: 0,
   costUsd: 0,
+  costOffsetUsd: 0,
+  activeOffsetMs: 0,
   extensions: 0,
   needsHuman: false,
   testerPaths: [],

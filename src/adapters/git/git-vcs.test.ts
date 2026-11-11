@@ -108,6 +108,14 @@ describe("createGitVcs", () => {
     );
   });
 
+  it("names the checked-out branch, empty when detached", async () => {
+    expect(await vcs.currentBranch()).toBe("main");
+    await vcs.createBranch("conductor/x", "main");
+    expect(await vcs.currentBranch()).toBe("conductor/x");
+    repo.git("switch", "-q", "--detach");
+    expect(await vcs.currentBranch()).toBe("");
+  });
+
   it("knows whether the working tree is clean", async () => {
     expect(await vcs.isClean()).toBe(true);
     await repo.write("new.ts", "x");

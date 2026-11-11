@@ -10,7 +10,9 @@ import type { Command, CliIo } from "../cli.types.js";
 import type { RunInput, RunState } from "../../core/schemas/state.js";
 
 const MAX_TITLE_LENGTH = 72;
-const NO_PR_REQUIRED =
+export const DIRTY_TREE =
+  "The working tree has uncommitted changes; commit or stash them first.";
+export const NO_PR_REQUIRED =
   "Pull requests are not supported yet (phase 3 of the plan); pass --no-pr to work on a local branch only.";
 
 function runSuffix(): string {
@@ -27,7 +29,7 @@ export function promptInput(text: string): RunInput {
 }
 
 /** Prints the result; failed and aborted runs exit with 1. */
-function finish(io: CliIo, state: RunState): number {
+export function finish(io: CliIo, state: RunState): number {
   io.stdout(`${state.runId} ${state.status} ${state.branch}\n`);
   if (state.status === "waiting_for_gate") {
     io.stderr(`Continue with: conductor resume --no-pr ${state.runId}\n`);
@@ -42,7 +44,7 @@ const NO_CHECKS_BANNER = `
 
 `;
 
-async function loadReportedConfig(
+export async function loadReportedConfig(
   io: CliIo,
 ): Promise<Awaited<ReturnType<typeof loadConfig>>["config"]> {
   const loaded = await loadConfig(io.cwd);
@@ -65,11 +67,7 @@ export function createRunCommand(openAgents: OpenAgents): Command {
     if (!noPr) throw new UsageError(NO_PR_REQUIRED);
     const config = await loadReportedConfig(io);
     return withEngine({ io, config, openAgents }, async (ctx, vcs) => {
-      if (!(await vcs.isClean())) {
-        throw new Error(
-          "The working tree has uncommitted changes; commit or stash them first.",
-        );
-      }
+      if (!(await vcs.isClean())) throw new Error(DIRTY_TREE);
       const runId = formatRunId(Date.now(), runSuffix());
       io.stderr(`Starting run ${runId}\n`);
       return finish(

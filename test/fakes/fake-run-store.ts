@@ -39,4 +39,9 @@ export class FakeRunStore implements RunStore {
     this.archived.add(runId);
     return Promise.resolve();
   }
+
+  restore(runId: string): Promise<void> {
+    this.archived.delete(runId);
+    return Promise.resolve();
+  }
 }

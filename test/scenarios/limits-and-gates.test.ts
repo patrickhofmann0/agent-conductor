@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { createTestEngine, RUN_ID } from "../fakes/test-engine.js";
-import { resumeRun, startRun } from "../../src/core/pipeline/engine.js";
+import { createTestEngine, newState, RUN_ID } from "../fakes/test-engine.js";
+import {
+  resumeRun,
+  reviseRun,
+  startRun,
+} from "../../src/core/pipeline/engine.js";
 
 const input = {
   kind: "prompt" as const,
@@ -223,4 +227,58 @@ describe("scenario: final gate", () => {
     expect(state.status).toBe("done");
     expect(engine.gates.requests).toEqual([]);
   });
+});
+
+describe("scenario: revise a finished run", () => {
+  it("reopens a done run with human feedback and finishes it again", async () => {
+    const engine = createTestEngine({ gates: noGates });
+    await startRun(engine.ctx, { runId: RUN_ID, input });
+    engine.vcs.change("src/export.ts");
+
+    const state = await reviseRun(engine.ctx, RUN_ID, "Add a header row");
+
+    expect(state).toMatchObject({ status: "done", iteration: 2 });
+    expect(engine.store.archived.has(RUN_ID)).toBe(true);
+    expect(engine.agents.requestsFor("coder")[1]?.prompt).toContain(
+      "Add a header row",
+    );
+    expect(engine.agents.requestsFor("reviewer")[1]?.prompt).toContain(
+      "## Feedback from a human",
+    );
+    expect(engine.vcs.commits.map((commit) => commit.message)).toContain(
+      `chore(conductor): reopen run ${RUN_ID}`,
+    );
+    expect(engine.vcs.squashes).toHaveLength(2);
+    expect(engine.vcs.squashes[1]?.since).toBe("base");
+  });
+
+  it("gives a run that hit its limits fresh iteration and cost budgets", async () => {
+    const engine = createTestEngine({
+      gates: noGates,
+      loop: { maxIterations: 1 },
+      limits: { maxCostUsd: 0.5 },
+    });
+    engine.agents.script("reviewer", { output: forever });
+    const first = await startRun(engine.ctx, { runId: RUN_ID, input });
+    expect(first.status).toBe("needs_human");
+    engine.agents.script("reviewer", { output: forever }, { output: forever });
+
+    const state = await reviseRun(engine.ctx, RUN_ID, "Use semicolons");
+
+    expect(state).toMatchObject({ status: "needs_human", iteration: 3 });
+    expect(state.outcome).toContain("Iteration limit reached: 1 of 1");
+    expect(state.costUsd).toBeGreaterThan(0.5);
+  });
+
+  it.each(["running", "waiting_for_gate", "failed", "aborted"] as const)(
+    "refuses to revise a run that is %s",
+    async (status) => {
+      const engine = createTestEngine();
+      await engine.store.saveState(newState({ status }));
+
+      await expect(reviseRun(engine.ctx, RUN_ID, "x")).rejects.toThrow(
+        `Run ${RUN_ID} is ${status}; only finished runs`,
+      );
+    },
+  );
 });

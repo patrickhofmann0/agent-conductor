@@ -8,7 +8,7 @@ import {
   stat,
   writeFile,
 } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 import type { RunStore } from "../../core/ports/run-store.types.js";
 import { runStateSchema, type RunState } from "../../core/schemas/state.js";
@@ -69,6 +69,12 @@ async function removeEmpty(directories: readonly string[]): Promise<void> {
       return;
     }
   }
+}
+
+async function restoreRun(source: string, destination: string): Promise<void> {
+  if (!(await exists(source))) return;
+  await mkdir(dirname(destination), { recursive: true });
+  await move(source, destination);
 }
 
 interface ArchiveRequest {
@@ -145,6 +151,7 @@ export function createFileRunStore(options: FileRunStoreOptions): RunStore {
         throw error;
       }
     },
+    restore: (runId) => restoreRun(archived(runId), active(runId)),
     archive: (runId) =>
       archiveRun({
         repository: options.repository,

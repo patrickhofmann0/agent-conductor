@@ -44,6 +44,21 @@ describe("budgetBreach", () => {
     ).toBe("cost");
   });
 
+  it("counts cost and time since the last revise", () => {
+    const revised = { ...base, costOffsetUsd: 3, activeOffsetMs: 900_000 };
+
+    expect(
+      budgetBreach(config, { ...revised, costUsd: 4.99, activeMs: 1_499_999 }),
+    ).toBeNull();
+    expect(budgetBreach(config, { ...revised, costUsd: 5 })?.detail).toBe(
+      "Cost limit reached: $2.00 of $2.00.",
+    );
+    expect(
+      budgetBreach(config, { ...revised, costUsd: 3, activeMs: 1_500_000 })
+        ?.detail,
+    ).toBe("Time limit reached: 10 min of 10 min.");
+  });
+
   it("grants another budget per extension", () => {
     const extended = { ...base, extensions: 1 };
 

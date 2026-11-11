@@ -44,3 +44,29 @@ export function nextIteration(
     violations: [],
   };
 }
+
+/** The human's change request, routed to the coder like a review finding. */
+function humanFinding(feedback: string, iteration: number): Finding {
+  return {
+    id: `human-feedback-${String(iteration)}`,
+    severity: "high",
+    target: "coder",
+    message: feedback,
+    source: "human",
+  };
+}
+
+/**
+ * Starts an iteration for coder and tester with a human's feedback. It does not
+ * count toward the iteration limit.
+ */
+export function startHumanIteration(
+  state: RunState,
+  feedback: string,
+): RunState {
+  const finding = humanFinding(feedback, state.iteration + 1);
+  return {
+    ...nextIteration(state, "both", [finding]),
+    humanIterations: state.humanIterations + 1,
+  };
+}

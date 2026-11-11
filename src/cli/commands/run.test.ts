@@ -1,21 +1,21 @@
-import { writeFileSync } from "node:fs";
 import { mkdtemp, readdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { APPROVE_JSON } from "../../../test/fakes/fake-agent-runner.js";
-import { captureIo } from "../../../test/support/cli-io.js";
+import {
+  repositoryIo,
+  scriptedAgents,
+  type ScriptedAgentOptions,
+  type ScriptedAgents,
+} from "../../../test/support/cli-run.js";
 import {
   createTempRepo,
   type TempRepo,
 } from "../../../test/support/temp-repo.js";
 
 import { createResumeCommand, createRunCommand, promptInput } from "./run.js";
-
-import type { AgentRunRequest } from "../../core/ports/agent-runner.types.js";
-import type { OpenAgents } from "../engine-setup.js";
 
 let repo: TempRepo;
 let dataHome: string;
@@ -25,55 +25,12 @@ beforeEach(async () => {
   dataHome = await mkdtemp(join(tmpdir(), "conductor-data-"));
 });
 
-const OUTPUT = {
-  po: "# Requirements\n\n1. Export CSV",
-  planner: "# Plan\n\n1. Add exporter",
-  coder: "Implemented.",
-  tester: "Tested.",
-  reviewer: APPROVE_JSON,
-} as const;
-
-function agents(options: { failAt?: AgentRunRequest["role"] } = {}): {
-  open: OpenAgents;
-  closed: () => boolean;
-} {
-  let closed = false;
-  const open: OpenAgents = () =>
-    Promise.resolve({
-      agents: {
-        run: (request) => {
-          if (request.role === options.failAt) {
-            return Promise.reject(new Error("Interrupted"));
-          }
-          if (request.role === "coder") {
-            writeFileSync(
-              join(repo.dir, "export.ts"),
-              "export const csv = 1;\n",
-            );
-          }
-          return Promise.resolve({
-            sessionId: `ses-${request.role}`,
-            status: "completed",
-            output: OUTPUT[request.role],
-            costUsd: 0.1,
-            durationMs: 10,
-          });
-        },
-      },
-      close: () => {
-        closed = true;
-        return Promise.resolve();
-      },
-    });
-  return { open, closed: () => closed };
+function agents(options: ScriptedAgentOptions = {}): ScriptedAgents {
+  return scriptedAgents(repo.dir, options);
 }
 
-function io(answers: string): ReturnType<typeof captureIo> {
-  const captured = captureIo(repo.dir, answers);
-  return {
-    ...captured,
-    io: { ...captured.io, env: { XDG_DATA_HOME: dataHome, EDITOR: "true" } },
-  };
+function io(answers: string): ReturnType<typeof repositoryIo> {
+  return repositoryIo(repo.dir, dataHome, answers);
 }
 
 describe("run command", () => {

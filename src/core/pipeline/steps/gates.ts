@@ -1,12 +1,11 @@
 import { PLAN, REQUIREMENTS, requireArtifact } from "./artifacts.js";
 import { formatCheckResults } from "../../prompts/format.js";
 import { renderGateBody } from "../pr-body.js";
-import { enterLoop, nextIteration } from "../transitions.js";
+import { enterLoop, startHumanIteration } from "../transitions.js";
 
 import type { EngineContext, StepHandler } from "../engine.types.js";
 import type { GateDecision, GateName } from "../../ports/gate-handler.types.js";
 import type { RunState } from "../../schemas/state.js";
-import type { Finding } from "../../schemas/verdict.js";
 
 interface GateSpec {
   readonly gate: GateName;
@@ -108,17 +107,6 @@ async function finalSummary(
   ].join("\n\n");
 }
 
-/** The human's change request, routed to the coder like a review finding. */
-function humanFinding(feedback: string, iteration: number): Finding {
-  return {
-    id: `human-feedback-${String(iteration)}`,
-    severity: "high",
-    target: "coder",
-    message: feedback,
-    source: "human",
-  };
-}
-
 /**
  * Lets a human accept the approved result or ask for another iteration
  * (phase 2b). Iterations started here do not count toward the limit.
@@ -128,10 +116,5 @@ export const finalGateStep = createGateStep({
   artifact: FINAL_SUMMARY,
   content: finalSummary,
   approve: (state) => ({ ...state, step: "finalize" }),
-  revise: (state, feedback) => ({
-    ...nextIteration(state, "both", [
-      humanFinding(feedback, state.iteration + 1),
-    ]),
-    humanIterations: state.humanIterations + 1,
-  }),
+  revise: startHumanIteration,
 });

@@ -16,24 +16,26 @@ function minutes(ms: number): string {
   return `${String(Math.round(ms / 60_000))} min`;
 }
 
-/** Checks the cost and active-time budgets. */
+/** Checks the cost and active-time budgets, counted since the last `revise`. */
 export function budgetBreach(
   config: Config,
   state: RunState,
 ): LimitBreach | null {
   const factor = budgetFactor(state);
+  const cost = state.costUsd - state.costOffsetUsd;
   const maxCost = config.limits.maxCostUsd * factor;
-  if (state.costUsd >= maxCost) {
+  if (cost >= maxCost) {
     return {
       kind: "cost",
-      detail: `Cost limit reached: $${state.costUsd.toFixed(2)} of $${maxCost.toFixed(2)}.`,
+      detail: `Cost limit reached: $${cost.toFixed(2)} of $${maxCost.toFixed(2)}.`,
     };
   }
+  const activeMs = state.activeMs - state.activeOffsetMs;
   const maxTime = config.limits.totalTimeout * factor;
-  if (state.activeMs >= maxTime) {
+  if (activeMs >= maxTime) {
     return {
       kind: "time",
-      detail: `Time limit reached: ${minutes(state.activeMs)} of ${minutes(maxTime)}.`,
+      detail: `Time limit reached: ${minutes(activeMs)} of ${minutes(maxTime)}.`,
     };
   }
   return null;
