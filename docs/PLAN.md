@@ -17,7 +17,7 @@ Reviewer** – wobei zwischen Reviewer und Coder/Tester eine konfigurierbare Sch
 existiert. Das Framework läuft identisch:
 
 - **lokal** in einem Devcontainer (CLI `conductor`)
-- **in GitHub Actions** (im selben Devcontainer via `devcontainers/ci`)
+- **in GitHub Actions** (wiederverwendbarer Workflow, Devcontainer optional; ADR 0014)
 
 Das Ergebnis eines Laufs ist ein **Pull Request**.
 
@@ -68,8 +68,8 @@ ersten Commit an ein Satz **harter, maschinell durchgesetzter Leitplanken** (Kap
 | D28 | Limits                   | Iterationen, Timeout (pro Phase + gesamt), Kostenlimit (USD)                                                                                             |
 | D29 | Agent-Rechte             | Rollenbasiert minimal                                                                                                                                    |
 | D30 | Resume                   | `conductor resume <run-id>` aus `state.json`                                                                                                             |
-| D31 | Devcontainer             | Devcontainer-Feature für Ziel-Repos + eigener Devcontainer für Framework-Entwicklung                                                                     |
-| D32 | CI-Umgebung              | Action läuft im Devcontainer (`devcontainers/ci`)                                                                                                        |
+| D31 | Devcontainer             | Eigener Devcontainer für Framework-Entwicklung; für Ziel-Repos optional (ADR 0014)                                                                       |
+| D32 | CI-Umgebung              | Wiederverwendbarer Workflow auf normalem Runner; Devcontainer optional (ADR 0014)                                                                        |
 | D33 | CI-Trigger               | Issue-Label `conductor`                                                                                                                                  |
 | D34 | Sprache                  | Prompts Englisch, Artefakte/PR-Texte in konfigurierbarer Sprache                                                                                         |
 | D35 | Linter                   | ESLint (typed) + Prettier                                                                                                                                |
@@ -117,12 +117,6 @@ agent-conductor/
 │   │   ├── mutation.yml        # Stryker (PR + nightly)
 │   │   └── release.yml         # release-please + npm publish
 │   └── CODEOWNERS
-├── action/                     # Composite GitHub Action (Phase 4)
-│   └── action.yml
-├── devcontainer-feature/       # Devcontainer-Feature (Phase 4)
-│   └── src/agent-conductor/
-│       ├── devcontainer-feature.json
-│       └── install.sh
 ├── docs/
 │   ├── PLAN.md                 # dieses Dokument
 │   └── adr/                    # Architecture Decision Records
@@ -459,47 +453,44 @@ Ablauf:
 4. Gates: interaktiver Prompt mit Anzeige des Artefakts (inkl. offener Fragen).
 5. Am Ende: Squash, Push, PR (sofern nicht `--no-pr`; benötigt `gh`, angemeldet per `gh auth login` oder `GH_TOKEN`; ADR 0013).
 
-### 7.2 GitHub Action
+### 7.2 GitHub Action (ADR 0014)
 
-**Trigger-Workflow (im Ziel-Repo, von `conductor init` erzeugt):**
+**Workflow im Ziel-Repo (von `conductor init --ci` erzeugt):**
 
 ```yaml
+name: conductor
 on:
   issues: { types: [labeled] }
   pull_request_review: { types: [submitted] }
   pull_request: { types: [labeled] }
 
-concurrency:
-  group: conductor-${{ github.event.issue.number || github.event.pull_request.number }}
-  cancel-in-progress: false
-
 jobs:
   conductor:
-    if: <label == conductor | review on conductor/* branch | label == conductor:approved>
-    runs-on: ubuntu-latest
+    uses: <owner>/agent-conductor/.github/workflows/conductor-reusable.yml@v1
     permissions: { contents: write, pull-requests: write, issues: write }
-    steps:
-      - uses: actions/checkout@v4
-        with: { fetch-depth: 0 }
-      - uses: <owner>/agent-conductor/action@v1
-        with:
-          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+    secrets:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 ```
 
-**Ablauf in CI:**
+Einmalig im Ziel-Repo: Secret anlegen, „Allow GitHub Actions to create and approve pull
+requests“ aktivieren, `limits.maxCostUsd` in `conductor.yaml` setzen.
 
-1. Label `conductor` am Issue → `run --issue`.
-2. Nach PO: Draft-PR wird erstellt mit `requirements.md` im Branch und im PR-Body;
-   Zustand `waiting_for_gate`, Job endet.
-3. PR-Review „Approve" oder Label `conductor:approved` → `resume`; Label wird entfernt.
-4. PR-Review „Request changes" → `resume` mit Review-Kommentaren als Feedback, Phase
-   wird wiederholt.
-5. Analog für Planner-Gate.
-6. Schleife läuft ohne Gate durch. Am Ende: Squash, Force-Push, PR wird „Ready for
-   review" (oder bleibt Draft + `conductor:needs-human`).
+**Wiederverwendbarer Workflow (in diesem Repo):** Concurrency pro Issue/PR, Checkout
+(`fetch-depth: 0`, bei PR-Events der PR-Branch), conductor und OpenCode installieren
+(bis Phase 5 aus dem Quellcode gebaut), `conductor ci`, Artefakte als Actions-Artifact.
 
-Die Action nutzt `devcontainers/ci`, um im Devcontainer des Ziel-Repos zu laufen.
-Voraussetzung: Das Ziel-Repo bindet das conductor-Devcontainer-Feature ein.
+**`conductor ci`:** liest das Event (`GITHUB_EVENT_NAME`, `GITHUB_EVENT_PATH`) und
+entscheidet in `core/ci/` provider-neutral:
+
+1. Label `conductor` am Issue (von jemandem mit Schreibrecht) → `run --issue <ref> --gates pr`.
+2. Nach PO: Draft-PR mit `requirements.md`; Zustand `waiting_for_gate`, Job endet.
+3. Review auf einem Branch `conductor/*` oder Label `conductor:approved` → `resume --gates pr <run-id>`
+   (Run-ID aus dem Branchnamen). Die Gate-Auswertung aus Phase 3 entscheidet über
+   approve, revise oder weiter warten.
+4. Analog für Planner- und finales Gate.
+5. Schleife läuft ohne Gate durch. Am Ende: Squash, Force-Push, PR wird „Ready for
+   review“ (oder bleibt Draft + `conductor:needs-human`).
+6. Alle anderen Events → `skip` mit Begründung im Log.
 
 ### 7.3 Run-State
 
@@ -544,11 +535,12 @@ Voraussetzung: Das Ziel-Repo bindet das conductor-Devcontainer-Feature ein.
 
 ## 8. Devcontainer
 
-### 8.1 Feature für Ziel-Repos (`ghcr.io/<owner>/agent-conductor/conductor`)
+### 8.1 Devcontainer in Ziel-Repos (optional, ADR 0014)
 
-- Installiert Node (falls nicht vorhanden), OpenCode, `gh` (ADR 0013), `agent-conductor` (npm global).
-- Optionen: `version`, `opencodeVersion`.
-- Veröffentlicht via `devcontainers/action` nach GHCR.
+- Kein Pflicht-Feature: Der Workflow läuft standardmäßig auf einem normalen Runner.
+- Später optional: Input `devcontainer: true` führt `conductor ci` im Devcontainer des
+  Ziel-Repos aus (`devcontainers/ci`); dafür ggf. ein Feature, das Node, OpenCode, `gh`
+  und `agent-conductor` installiert (Backlog).
 
 ### 8.2 Devcontainer für dieses Projekt
 
@@ -872,24 +864,26 @@ Akzeptanzkriterien:
 - Fehlt `gh` oder die Anmeldung, bricht der Lauf vor dem ersten Agenten mit einer
   klaren Meldung ab
 
-### Phase 4 – GitHub Action & Devcontainer-Feature
+### Phase 4 – GitHub Actions
 
-**Ziel:** Vollautomatischer Lauf in CI im Devcontainer.
+**Ziel:** Ein Lauf passiert vollständig in GitHub: Label am Issue → Draft-PR → Approves
+im PR → fertiger PR. Ziel-Repos brauchen dafür nur eine kurze Workflow-Datei (ADR 0014).
 
 Aufgaben:
 
-- [ ] Devcontainer-Feature (8.1) + Veröffentlichung nach GHCR
-- [ ] Composite Action (`action/action.yml`) mit `devcontainers/ci`; Inputs für Provider-Keys, Config-Pfad
-- [ ] Event-Mapping: `issues.labeled` → `run`, `pull_request_review.submitted` / `pull_request.labeled` → `resume`
-- [ ] Concurrency pro Issue/PR
-- [ ] `conductor init` erzeugt zusätzlich den Workflow und ergänzt `devcontainer.json`
-- [ ] Archivierung der Artefakte als Actions-Artifact
+- [ ] `core/ci/`: neutrale Event-Typen (`issue_labeled`, `review_submitted`, `approval_labeled`, `ignored`, jeweils mit `actorCanApprove`) und reine Funktion `dispatch(event, config)` → `run` | `resume` | `skip` (Trigger-Label, Branch-Präfix, Schreibrecht, Run-ID aus Branch)
+- [ ] Port `CiEnvironment` (`readEvent()`); Adapter `adapters/github-actions/` liest `GITHUB_EVENT_NAME` und `GITHUB_EVENT_PATH` (zod), getestet mit aufgezeichneten Event-Payloads
+- [ ] CLI `conductor ci`: Event lesen, `dispatch`, dann `run`/`resume` mit `--gates pr`; verlangt `limits.maxCostUsd`; Exit-Code 0 bei `skip`
+- [ ] CLI `conductor init --ci`: erzeugt `.github/workflows/conductor.yml` (Aufruf des wiederverwendbaren Workflows); überschreibt nichts
+- [ ] Wiederverwendbarer Workflow `.github/workflows/conductor-reusable.yml` (der Name `conductor.yml` bleibt frei für den Aufrufer-Workflow dieses Repos in Phase 6): Concurrency pro Issue/PR, Checkout, Installation (bis Phase 5 aus dem Quellcode), `conductor ci`, Artefakt-Upload. **Eigener PR mit Label `guardrails-change`**, ohne Änderungen an `src/` und `test/`
+- [ ] Doku: `docs/guide/getting-started-ci.md` (Einrichtung, Ablauf, Kosten, Sicherheit: Issue-Text ist Prompt-Input)
 
 Akzeptanzkriterien:
 
 - In einem Test-Repo: Label setzen → Draft-PR mit Requirements → Approve → Plan →
   Approve → fertiger PR mit einem Commit
 - „Request changes" am Plan führt zu überarbeitetem Plan
+- Events, die conductor nicht betreffen, beenden den Job in wenigen Sekunden mit `skip`
 
 ### Phase 5 – E2E & Release
 
@@ -899,12 +893,13 @@ Aufgaben:
 
 - [ ] `examples/sample-repo` mit kleinem Feature-Issue
 - [ ] E2E-Workflow (manuell + nightly) gegen echtes Modell, mit Kostenlimit
-- [ ] release-please, npm-Publish mit Provenance, Feature-Release, Action-Tag `v1`
+- [ ] release-please, npm-Publish mit Provenance, Tag `v1` für den wiederverwendbaren Workflow
 - [ ] README: Quickstart lokal, Quickstart CI, Config-Referenz (aus Schema generiert)
 
 Akzeptanzkriterien:
 
-- `npx agent-conductor --version` funktioniert unter Node 20 ohne Bun
+- `npx agent-conductor --version` funktioniert unter Node 22 ohne Bun
+- Der wiederverwendbare Workflow installiert das veröffentlichte Paket statt aus dem Quellcode zu bauen
 - E2E-Lauf grün
 
 ### Phase 6 – Dogfooding
@@ -928,7 +923,7 @@ Aufgaben:
 | Kostenangaben aus OpenCode ungenau/fehlend (z. B. Copilot)                           | Kostenlimit greift nicht     | Fallback auf Token-basierte Schätzung, Warnung                                                                 |
 | Agents umgehen `git`-Deny (z. B. über Script-Dateien)                                | Integritätsverlust           | Integritätsprüfung nach jeder Phase (5.3) → `failed`                                                           |
 | Coder umgeht Leitplanken durch Änderungen außerhalb der Patterns (z. B. Test-Helper) | Tests geschwächt             | Tester-Diff zählt zur Leitplanken-Menge; Reviewer-Prompt prüft explizit                                        |
-| `devcontainers/ci` langsam                                                           | Lange CI-Zeiten              | Prebuilt Images via `cacheFrom`                                                                                |
+| Installation in CI langsam (vor Phase 5: Build aus Quellcode)                        | Lange CI-Zeiten              | Ab Phase 5 veröffentlichtes Paket; Cache für Bun/npm im Workflow                                               |
 | Force-Push überschreibt menschliche Commits im PR                                    | Datenverlust                 | `--force-with-lease`; vor Finalisierung prüfen, dass nur conductor-Commits im Branch sind, sonst `needs_human` |
 | Stryker-Laufzeit                                                                     | Langsame PRs                 | Inkrementell im PR, vollständig nightly                                                                        |
 | Gate-Resume durch Unbefugte (Review von beliebigen Usern)                            | Unkontrollierter Fortschritt | Nur Reviews/Labels von Usern mit Write-Permission werden berücksichtigt                                        |
@@ -950,6 +945,8 @@ Offene Punkte (vor der jeweiligen Phase zu klären):
 - Paralleler Tester (eigener Worktree)
 - PO-Dialog mit Rückfragen
 - Copilot in CI
+- Weitere CI-Systeme (ADR 0014): Gitea Actions (weitgehend GitHub-kompatibel, Forge über `tea`), GitLab CI (kein nativer Label-Trigger, braucht Webhook → Pipeline-Trigger)
+- Optionaler Devcontainer im CI-Workflow (Input `devcontainer: true`, ggf. Devcontainer-Feature)
 - Weitere Forges (GitLab via `glab`): neuer Adapter `gitlab-cli` + Config-Option `forge` (ADR 0013); Gate-Semantik (Approvals, Labels) und CI-Integration separat klären
 - Kosten-/Laufzeit-Reporting über mehrere Runs
 - Lokale Isolation über eigenen Worktree pro Run (`workspace: worktree | in-place`, Default zunächst `in-place`): Repo des Nutzers bleibt frei, parallele Runs möglich. Voraussetzungen:
