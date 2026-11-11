@@ -90,7 +90,7 @@ Options for `run`, `resume` and `revise`:
 
 - `--no-pr`: work on the local branch only; no push, no pull request, no `gh` needed.
   `run --issue` still reads the issue with `gh`.
-- `--gates github`: answer gates with pull request reviews instead of the terminal
+- `--gates pr`: answer gates with pull request reviews instead of the terminal
   (see [Gates on the pull request](#gates-on-the-pull-request)). Pass it again on
   `resume`.
 
@@ -120,18 +120,31 @@ another budget, finish as a draft or abort.
 
 ### Gates on the pull request
 
-With `--gates github`, conductor does not ask in the terminal. At a gate it updates the
-draft pull request with the document to review, saves the run and stops with status
-`waiting_for_gate`. This is how gates work in GitHub Actions; locally it lets you try
-them out. On the pull request:
+`--gates` decides **where** you answer a gate. By default (`--gates terminal`)
+conductor asks in the terminal and continues as soon as you type `a`. With
+`--gates pr`, you answer on the pull request instead, and conductor exits while it
+waits:
 
-- **Approve** the pull request, or add the label `conductor:approved`
-  (`github.labels.approved`), to continue. conductor removes the label again.
+```text
+$ conductor run --gates pr "Add CSV export"
+…
+<run-id> waiting_for_gate conductor/<run-id>-add-csv-export
+Continue with: conductor resume --gates pr <run-id>
+```
+
+The draft pull request now shows the document to review. On the pull request:
+
+- **Approve** it, or add the label `conductor:approved` (`github.labels.approved`),
+  to continue. conductor removes the label again.
 - **Request changes** to revise. Your review text and all comments since the gate
   opened become the feedback.
 
-Then continue with `conductor resume --gates github <run-id>`. Without a new review,
-the run keeps waiting. Only reviews and comments from people with write access count,
+Then run `conductor resume --gates pr <run-id>`. Without a new review, the run keeps
+waiting.
+
+This is how gates will work in GitHub Actions (phase 4), where there is no terminal and
+a workflow runs `resume` for you. Locally, `--gates pr` lets you try that flow or hand
+the review to a colleague; for everyday local runs you do not need it. Only reviews and comments from people with write access count,
 and only those after the gate opened. At a limit, `loop.onLimit: ask` finishes as a
 draft, because nobody can answer in the terminal.
 

@@ -85,7 +85,7 @@ function checkRunArgs(input: CommandInput): string {
 }
 
 /**
- * `conductor run [--no-pr] [--gates github] "<task>" | --issue <ref>`: starts a
+ * `conductor run [--no-pr] [--gates pr] "<task>" | --issue <ref>`: starts a
  * new run on a fresh branch.
  */
 export function createRunCommand(

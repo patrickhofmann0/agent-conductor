@@ -67,6 +67,23 @@ describe("runCli", () => {
     expect(err()).toBe("init takes no arguments.\n");
   });
 
+  it("rejects unknown --gates values", async () => {
+    const { io, err } = captureIo(await tempDir());
+    expect(await runCli(["validate-config", "--gates", "github"], io)).toBe(
+      EXIT_USAGE,
+    );
+    expect(err()).toBe(
+      'Unknown value "github" for --gates; use terminal or pr.\n',
+    );
+  });
+
+  it.each([["terminal"], ["pr"]])("accepts --gates %s", async (value) => {
+    const { io } = captureIo(await tempDir());
+    expect(await runCli(["validate-config", "--gates", value], io)).toBe(
+      EXIT_OK,
+    );
+  });
+
   it("maps command failures to exit code 1", async () => {
     const cwd = await tempDir();
     await writeFile(join(cwd, "conductor.yaml"), "foo: 1\n");

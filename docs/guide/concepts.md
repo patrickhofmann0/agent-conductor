@@ -67,7 +67,7 @@ implementation starts. Both gates are on by default. A human can:
 - **abort** the run.
 
 Locally, the gate is a prompt in the terminal; feedback can be typed there or written in
-your editor (see [Running locally](local-usage.md#gates)). With `--gates github` (and
+your editor (see [Running locally](local-usage.md#gates)). With `--gates pr` (and
 later in GitHub Actions), the run publishes a draft pull request, stops and continues
 on `resume` when the pull request is approved (or labeled `conductor:approved`);
 requested changes and the comments since the gate opened become the feedback (see

@@ -17,13 +17,13 @@ export interface Publishing {
 /** Rejects contradicting flags before anything starts. */
 export function checkPublishingFlags(input: CommandInput): void {
   if (input.noPr && input.forgeGates === true) {
-    throw new UsageError("--gates github needs a pull request; drop --no-pr.");
+    throw new UsageError("--gates pr needs a pull request; drop --no-pr.");
   }
 }
 
 function flags(input: CommandInput): string {
   if (input.noPr) return "--no-pr ";
-  return input.forgeGates === true ? "--gates github " : "";
+  return input.forgeGates === true ? "--gates pr " : "";
 }
 
 /** Connects to the forge unless the command works on a local branch only. */

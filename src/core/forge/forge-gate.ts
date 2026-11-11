@@ -9,7 +9,7 @@ export interface ForgeGateOptions {
 }
 
 /**
- * Gates on the run's pull request (CI, or locally with `--gates github`):
+ * Gates on the run's pull request (CI, or locally with `--gates pr`):
  * without a decision the run pauses, `resume` reads reviews and labels.
  */
 export function createForgeGateHandler(options: ForgeGateOptions): GateHandler {

@@ -15,7 +15,7 @@ export interface CommandInput {
   readonly noPr: boolean;
   /** `--issue <ref>`: the issue to implement instead of a task text. */
   readonly issue?: string | undefined;
-  /** `--gates github`: gate on pull request reviews instead of the terminal. */
+  /** `--gates pr`: gate on pull request reviews instead of the terminal. */
   readonly forgeGates?: boolean;
   readonly io: CliIo;
 }

@@ -110,7 +110,7 @@ describe("runs with a pull request", () => {
     const runId = /Starting run (\S+)/.exec(first.err())?.[1] ?? "";
     expect(first.out()).toContain(`${runId} waiting_for_gate`);
     expect(first.err()).toContain(
-      `Continue with: conductor resume --gates github ${runId}`,
+      `Continue with: conductor resume --gates pr ${runId}`,
     );
     expect(forge.pullRequests[0]?.draft).toBe(true);
 

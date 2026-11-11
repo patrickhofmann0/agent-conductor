@@ -857,7 +857,7 @@ Aufgaben:
 - [x] CLI:
   - `run --issue <ref>` liest das Issue (auch mit `--no-pr`)
   - Ohne `--no-pr` werden der Forge-Publisher und weiterhin Terminal-Gates verwendet
-  - `--gates github` nutzt PR-Reviews als Gate, gilt für `run`, `resume` und `revise`
+  - `--gates pr` nutzt PR-Reviews als Gate, gilt für `run`, `resume` und `revise`
   - `revise` funktioniert jetzt auch ohne `--no-pr`
 - [x] Tests: Adapter gegen aufgezeichnete `gh`-Ausgaben mit Prüfung der exakten Argumente; Core- und CLI-Tests mit Fake-Forge und einem Bare-Repo als `origin`
 - [x] Doku: `docs/guide/local-usage.md`, `docs/guide/concepts.md`, README
@@ -866,7 +866,7 @@ Aufgaben:
 Akzeptanzkriterien:
 
 - Lokal erzeugt `run --issue` einen Draft-PR, der nach dem Lauf „Ready“ ist
-- Gate über PR-Review lokal simulierbar: `run --gates github` endet in
+- Gate über PR-Review lokal simulierbar: `run --gates pr` endet in
   `waiting_for_gate`, ein Approve oder „Changes requested“ am PR und anschließend
   `resume` setzen den Lauf korrekt fort
 - Fehlt `gh` oder die Anmeldung, bricht der Lauf vor dem ersten Agenten mit einer

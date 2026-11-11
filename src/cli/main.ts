@@ -34,8 +34,10 @@ Commands:
 
 Options:
   --no-pr        Work on a local branch only, without GitHub
-  --gates <how>  "terminal" (default) or "github": approve gates with pull
-                 request reviews; the run pauses until you resume it
+  --gates <where>
+                 Where you answer gates: "terminal" (default) asks here;
+                 "pr" pauses the run until you review the pull request,
+                 then continue with resume --gates pr
   --issue <ref>  The issue to implement (run only)
   -v, --version  Print the version
   -h, --help     Print this help
@@ -61,9 +63,9 @@ const OPTIONS = {
 
 function forgeGates(value: string | undefined): boolean {
   if (value === undefined || value === "terminal") return false;
-  if (value === "github") return true;
+  if (value === "pr") return true;
   throw new UsageError(
-    `Unknown value "${value}" for --gates; use terminal or github.`,
+    `Unknown value "${value}" for --gates; use terminal or pr.`,
   );
 }
 

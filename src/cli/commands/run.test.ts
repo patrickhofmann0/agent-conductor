@@ -130,10 +130,7 @@ describe("run command", () => {
       { args: ["Task"], issue: "#1" },
       "Pass either a task description or --issue, not both.",
     ],
-    [
-      { args: ["Task"], forgeGates: true },
-      "--gates github needs a pull request",
-    ],
+    [{ args: ["Task"], forgeGates: true }, "--gates pr needs a pull request"],
   ])("rejects %j", async (options, message) => {
     await expect(
       createRunCommand(agents().open)({
@@ -155,7 +152,7 @@ describe("resume command", () => {
     ).rejects.toThrow(message);
   });
 
-  it("rejects --gates github with --no-pr", async () => {
+  it("rejects --gates pr with --no-pr", async () => {
     await expect(
       createResumeCommand(agents().open)({
         args: ["a"],
@@ -163,7 +160,7 @@ describe("resume command", () => {
         forgeGates: true,
         io: io("").io,
       }),
-    ).rejects.toThrow("--gates github needs a pull request");
+    ).rejects.toThrow("--gates pr needs a pull request");
   });
 
   it("fails for an unknown run", async () => {
