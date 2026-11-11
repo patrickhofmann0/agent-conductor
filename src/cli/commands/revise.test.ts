@@ -96,7 +96,6 @@ describe("revise command", () => {
     [[], true, "revise needs a run ID and feedback."],
     [["run-1"], true, "revise needs a run ID and feedback."],
     [["run-1", "  "], true, "revise needs a run ID and feedback."],
-    [["run-1", "More"], false, "pass --no-pr"],
   ])("rejects args %j with noPr %s", async (args, noPr, message) => {
     await expect(
       createReviseCommand(agents().open)({ args, noPr, io: io("").io }),

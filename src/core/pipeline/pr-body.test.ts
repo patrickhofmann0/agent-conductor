@@ -29,7 +29,7 @@ const approved = newState({
 });
 
 describe("renderPullRequestBody", () => {
-  it("renders summary, issue link, checks, run data and documents", () => {
+  it("renders summary, checks, run data and documents", () => {
     const body = renderPullRequestBody({
       state: approved,
       requirements: " REQ\n",
@@ -39,7 +39,6 @@ describe("renderPullRequestBody", () => {
     expect(body).toBe(
       [
         "## Summary\n\nExports CSV correctly.",
-        "Closes o/r#42",
         "## Checks\n\nNo checks are configured.",
         "## Run\n\n| Run ID | Iterations | Cost |\n| --- | --- | --- |\n| `20261106-120000-test` | 2 | $1.23 |",
         "<details>\n<summary>Requirements</summary>\n\nREQ\n\n</details>",
@@ -49,14 +48,13 @@ describe("renderPullRequestBody", () => {
     );
   });
 
-  it("works without issue, review and documents", () => {
+  it("works without review and documents", () => {
     const body = renderPullRequestBody({
       state: newState({ input: { kind: "prompt", title: "t", body: "" } }),
       requirements: null,
       plan: null,
     });
 
-    expect(body).not.toContain("Closes");
     expect(body).toContain("No review yet.");
     expect(body).toContain("<summary>Plan</summary>\n\n(not created)");
   });

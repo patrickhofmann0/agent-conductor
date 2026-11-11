@@ -22,9 +22,10 @@ const HELP = `Usage: conductor <command> [options]
 Orchestrates AI agents on top of OpenCode to implement features.
 
 Commands:
-  run --no-pr "<task>"     Start a run on a new local branch
-  resume --no-pr <run-id>  Continue a paused or interrupted run
-  revise --no-pr <run-id> "<feedback>"
+  run "<task>"             Start a run on a new branch and open a pull request
+  run --issue <ref>        Same, implementing a GitHub issue (owner/repo#42, #42)
+  resume <run-id>          Continue a paused or interrupted run
+  revise <run-id> "<feedback>"
                            Reopen a finished run and address the feedback
   runs                     List open runs in the current repository
   show <run-id>            Show a run with requirements, plan and all reviews
@@ -32,7 +33,10 @@ Commands:
   init                     Create a commented conductor.yaml
 
 Options:
-  --no-pr        Work on a local branch only (required until PR support exists)
+  --no-pr        Work on a local branch only, without GitHub
+  --gates <how>  "terminal" (default) or "github": approve gates with pull
+                 request reviews; the run pauses until you resume it
+  --issue <ref>  The issue to implement (run only)
   -v, --version  Print the version
   -h, --help     Print this help
 `;
@@ -51,7 +55,17 @@ const OPTIONS = {
   version: { type: "boolean", short: "v" },
   help: { type: "boolean", short: "h" },
   "no-pr": { type: "boolean" },
+  issue: { type: "string" },
+  gates: { type: "string" },
 } as const;
+
+function forgeGates(value: string | undefined): boolean {
+  if (value === undefined || value === "terminal") return false;
+  if (value === "github") return true;
+  throw new UsageError(
+    `Unknown value "${value}" for --gates; use terminal or github.`,
+  );
+}
 
 function parse(
   argv: readonly string[],
@@ -93,7 +107,13 @@ export async function runCli(
     return EXIT_USAGE;
   }
   try {
-    return await command({ args, noPr: values["no-pr"] === true, io });
+    return await command({
+      args,
+      noPr: values["no-pr"] === true,
+      issue: values.issue,
+      forgeGates: forgeGates(values.gates),
+      io,
+    });
   } catch (error: unknown) {
     io.stderr(`${describeError(error)}\n`);
     return error instanceof UsageError ? EXIT_USAGE : EXIT_FAILURE;

@@ -840,30 +840,28 @@ Anbindung über die `gh`-CLI (ADR 0013).
 
 Aufgaben:
 
-- [ ] Port `src/core/ports/forge.types.ts`:
-  - `getIssue(ref: IssueRef): Promise<Issue>` (`IssueRef` ist ein undurchsichtiger String, den nur der Adapter parst, z. B. `owner/repo#n`; `Issue` = Titel, Body, Labels, URL)
-  - `findPullRequest(branch): Promise<PullRequestRef | null>`
-  - `createPullRequest({ branch, base, title, body, draft }): Promise<PullRequestRef>`
-  - `updatePullRequest(ref, { title?, body? })`, `setDraft(ref, draft: boolean)`
-  - `addLabels(ref, labels)`, `removeLabels(ref, labels)`
-  - `listReviews(ref, since: number)` und `listComments(ref, since: number)` (Autor, `authorCanApprove`, Zustand `approve | request_changes | comment`, Text, Zeitpunkt)
-  - `closingReference(ref): string` für den PR-Body (z. B. `Closes owner/repo#n`)
-  - Alle Typen provider-neutral, keine GitHub-Begriffe im Port (ADR 0013)
-- [ ] zod-Schemas für `Issue`, `PullRequestRef`, `Review`, `Comment` in `core/schemas`; Fake `test/fakes/forge.ts`
-- [ ] Reine Gate-Auswertung in `core` (`evaluateGateFeedback`): nur Reviews und Labels nach `gateOpenedAt` von Nutzern mit `authorCanApprove`. Ein Approve oder das Label `conductor:approved` ergibt `approve`. „Changes requested“ ergibt `revise`, als Feedback dienen Review-Text plus Kommentare. Ohne passende Rückmeldung bleibt das Ergebnis `pending`. Der neueste Eintrag gewinnt.
-- [ ] State: `pullRequest` (Nummer, nullable) und `gateOpenedAt` (Zeitpunkt, nullable), Defaults für bestehende `state.json`
-- [ ] Adapter `src/adapters/github-cli/`: `exec` (wie `adapters/git/exec.ts`, injizierbar), Forge-Implementierung, Fehlerabbildung, Preflight (`gh auth status`, Mindestversion)
-- [ ] `GithubPublisher` (Publisher-Port): Push und danach PR anlegen oder aktualisieren. Bei Stage `gate` bleibt der PR ein Draft, bei `final` wird er Ready, bei `needs_human` bleibt er ein Draft und bekommt das Label `conductor:needs-human`.
-- [ ] `GithubGateHandler` (GateHandler-Port): `request` setzt `gateOpenedAt` und liefert `pending`, das führt zu `waiting_for_gate`. Beim `resume` wird die Gate-Auswertung angewendet, danach wird `conductor:approved` entfernt. `resolveLimit` liefert gemäß `onLimit` `draft_pr` oder `abort`.
-- [ ] Das finale Gate (`gates.final`) entspricht in CI „Changes requested“ auf dem Draft-PR (Akzeptanzkriterium aus Phase 2b)
-- [ ] PR-Body-Renderer (7.4): `core/pipeline/pr-body.ts` existiert bereits. Ergänzt werden die Issue-Referenz über `Forge.closingReference` und ein Hinweis zum Gate-Zustand.
-- [ ] CLI:
-  - `run --issue owner/repo#n` liest das Issue als Input (`kind: "issue"`).
-  - Ohne `--no-pr` werden der GitHub-Publisher und der Terminal-Gate-Handler verwendet; lokal bleiben die Gates also interaktiv.
-  - `--gates github` nutzt PR-Reviews als Gate, auch lokal, und dient zur Simulation.
-  - `resume` liest Reviews und Labels, wenn der Run auf ein GitHub-Gate wartet.
-- [ ] Tests: Adapter gegen aufgezeichnete `gh`-JSON-Fixtures, die exakten `gh`-Argumente werden geprüft; Core-Tests mit Fake-Forge
-- [ ] Doku: `docs/guide/local-usage.md` (Voraussetzung `gh auth login`, `--issue`, PR-Gates), `docs/guide/concepts.md`
+- [x] Port `src/core/ports/forge.types.ts` (provider-neutral, ADR 0013):
+  - `getIssue(ref)`: `ref` ist ein undurchsichtiger String, den nur der Adapter parst (`owner/repo#n`, `#n`); `Issue` = Ref, Titel, Body, URL
+  - `findPullRequest(branch)`, `createPullRequest({ branch, base, title, body, draft })`, `updatePullRequest(pr, { title, body })`, `setDraft(pr, draft)`
+  - `addLabels(pr, labels)`, `removeLabels(pr, labels)`
+  - `listReviews(pr, since)` und `listComments(pr, since)` (Autor, `authorCanApprove`, Zustand `approve | request_changes | comment`, Text, Zeitpunkt)
+  - `closingReference(ref)` für den PR-Body (z. B. `Closes owner/repo#n`)
+- [x] Fake `test/fakes/fake-forge.ts`. Abweichung: keine zod-Schemas für Forge-Typen in `core/schemas`; unbekannte Daten kommen nur im Adapter an und werden dort validiert
+- [x] Reine Gate-Auswertung `core/forge/gate-feedback.ts`: zählt nur Rückmeldungen von Nutzern mit `authorCanApprove` nach `gateOpenedAt`. Das Label `conductor:approved` oder das neueste entscheidende Review „Approve“ ergibt `approve`. „Changes requested“ ergibt `revise` mit allen Review-Texten und Kommentaren bis dahin. Sonst `pending`
+- [x] State: `gateOpenedAt` (Default `null` für bestehende `state.json`). Der Gate-Schritt setzt den Wert beim ersten Aufruf und löscht ihn bei einer Entscheidung. Abweichung: `pullRequest` wird nicht gespeichert, der PR wird über den Branch gefunden
+- [x] Adapter `src/adapters/github-cli/`: `gh.ts` (Subprozess, Body über stdin, Fehlerabbildung), `gh-forge.ts`, `responses.ts` (zod), `refs.ts`, `preflight.ts` (Mindestversion 2.40.0, `gh auth status`)
+- [x] Publisher `core/forge/forge-publisher.ts`: Push und danach PR anlegen oder aktualisieren. Bei `gate` bleibt der PR ein Draft, bei `final` wird er Ready (mit `closingReference`), bei `needs_human` bleibt er ein Draft mit dem Label `conductor:needs-human`
+- [x] Gate-Handler `core/forge/forge-gate.ts`: Auswertung bei jedem Aufruf, also auch beim `resume`; danach wird `conductor:approved` entfernt. `resolveLimit` liefert `draft_pr`
+- [x] Das finale Gate (`gates.final`) entspricht „Changes requested“ auf dem Draft-PR (Akzeptanzkriterium aus Phase 2b)
+- [x] PR-Body: `Closes …` kommt vom Forge-Publisher statt aus dem Renderer; der Gate-Hinweis kommt aus `renderGateBody`
+- [x] CLI:
+  - `run --issue <ref>` liest das Issue (auch mit `--no-pr`)
+  - Ohne `--no-pr` werden der Forge-Publisher und weiterhin Terminal-Gates verwendet
+  - `--gates github` nutzt PR-Reviews als Gate, gilt für `run`, `resume` und `revise`
+  - `revise` funktioniert jetzt auch ohne `--no-pr`
+- [x] Tests: Adapter gegen aufgezeichnete `gh`-Ausgaben mit Prüfung der exakten Argumente; Core- und CLI-Tests mit Fake-Forge und einem Bare-Repo als `origin`
+- [x] Doku: `docs/guide/local-usage.md`, `docs/guide/concepts.md`, README
+- [ ] Manueller Test gegen ein echtes GitHub-Repository (Akzeptanzkriterien unten)
 
 Akzeptanzkriterien:
 

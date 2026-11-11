@@ -35,12 +35,9 @@ function runTable(state: RunState): string {
 
 export function renderPullRequestBody(input: PullRequestBodyInput): string {
   const { state } = input;
-  const closes =
-    state.input.ref === undefined ? null : `Closes ${state.input.ref}`;
   return [
     warning(state),
     `## Summary\n\n${state.lastVerdict?.summary ?? "No review yet."}`,
-    closes,
     openFindings(state),
     `## Checks\n\n${formatCheckResults(state.checkResults)}`,
     runTable(state),

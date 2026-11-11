@@ -5,15 +5,21 @@ import { formatRunId } from "../../core/pipeline/naming.js";
 import { loadConfig, NO_CHECKS_WARNING } from "../config-file.js";
 import { withEngine, type OpenAgents } from "../engine-setup.js";
 import { UsageError } from "../errors.js";
+import { openGithub, type OpenForge } from "../forge-setup.js";
 
-import type { Command, CliIo } from "../cli.types.js";
+import {
+  checkPublishingFlags,
+  openPublishing,
+  readIssue,
+  type Publishing,
+} from "./publishing.js";
+
+import type { Command, CliIo, CommandInput } from "../cli.types.js";
 import type { RunInput, RunState } from "../../core/schemas/state.js";
 
 const MAX_TITLE_LENGTH = 72;
 export const DIRTY_TREE =
   "The working tree has uncommitted changes; commit or stash them first.";
-export const NO_PR_REQUIRED =
-  "Pull requests are not supported yet (phase 3 of the plan); pass --no-pr to work on a local branch only.";
 
 function runSuffix(): string {
   return randomBytes(4).readUInt32BE().toString(36).padStart(4, "0").slice(-6);
@@ -29,10 +35,16 @@ export function promptInput(text: string): RunInput {
 }
 
 /** Prints the result; failed and aborted runs exit with 1. */
-export function finish(io: CliIo, state: RunState): number {
+export function finish(
+  io: CliIo,
+  state: RunState,
+  publishing: Publishing,
+): number {
   io.stdout(`${state.runId} ${state.status} ${state.branch}\n`);
   if (state.status === "waiting_for_gate") {
-    io.stderr(`Continue with: conductor resume --no-pr ${state.runId}\n`);
+    io.stderr(
+      `Continue with: conductor resume ${publishing.flags}${state.runId}\n`,
+    );
   }
   return state.status === "failed" || state.status === "aborted" ? 1 : 0;
 }
@@ -58,37 +70,64 @@ export async function loadReportedConfig(
   return loaded.config;
 }
 
-/** `conductor run --no-pr "<task>"`: starts a new run on a fresh branch. */
-export function createRunCommand(openAgents: OpenAgents): Command {
-  return async ({ args, noPr, io }) => {
-    const text = args.join(" ");
-    if (text.trim() === "")
-      throw new UsageError("run needs a task description.");
-    if (!noPr) throw new UsageError(NO_PR_REQUIRED);
+function checkRunArgs(input: CommandInput): string {
+  const text = input.args.join(" ").trim();
+  if (input.issue !== undefined && text !== "") {
+    throw new UsageError(
+      "Pass either a task description or --issue, not both.",
+    );
+  }
+  if (input.issue === undefined && text === "") {
+    throw new UsageError("run needs a task description or --issue.");
+  }
+  checkPublishingFlags(input);
+  return text;
+}
+
+/**
+ * `conductor run [--no-pr] [--gates github] "<task>" | --issue <ref>`: starts a
+ * new run on a fresh branch.
+ */
+export function createRunCommand(
+  openAgents: OpenAgents,
+  openForge: OpenForge = openGithub,
+): Command {
+  return async (input) => {
+    const { io, issue } = input;
+    const text = checkRunArgs(input);
     const config = await loadReportedConfig(io);
-    return withEngine({ io, config, openAgents }, async (ctx, vcs) => {
+    const publishing = await openPublishing(input, openForge);
+    const runInput =
+      issue === undefined
+        ? promptInput(text)
+        : await readIssue(issue, { publishing, openForge, directory: io.cwd });
+    const setup = { io, config, openAgents, ...publishing };
+    return withEngine(setup, async (ctx, vcs) => {
       if (!(await vcs.isClean())) throw new Error(DIRTY_TREE);
       const runId = formatRunId(Date.now(), runSuffix());
       io.stderr(`Starting run ${runId}\n`);
-      return finish(
-        io,
-        await startRun(ctx, { runId, input: promptInput(text) }),
-      );
+      const state = await startRun(ctx, { runId, input: runInput });
+      return finish(io, state, publishing);
     });
   };
 }
 
-/** `conductor resume --no-pr <run-id>`: continues a paused or interrupted run. */
-export function createResumeCommand(openAgents: OpenAgents): Command {
-  return async ({ args, noPr, io }) => {
-    const [runId, ...rest] = args;
+/** `conductor resume [--no-pr] <run-id>`: continues a paused or interrupted run. */
+export function createResumeCommand(
+  openAgents: OpenAgents,
+  openForge: OpenForge = openGithub,
+): Command {
+  return async (input) => {
+    const [runId, ...rest] = input.args;
     if (runId === undefined || rest.length > 0) {
       throw new UsageError("resume needs exactly one run ID.");
     }
-    if (!noPr) throw new UsageError(NO_PR_REQUIRED);
-    const config = await loadReportedConfig(io);
-    return withEngine({ io, config, openAgents }, async (ctx) =>
-      finish(io, await resumeRun(ctx, runId)),
+    checkPublishingFlags(input);
+    const config = await loadReportedConfig(input.io);
+    const publishing = await openPublishing(input, openForge);
+    const setup = { io: input.io, config, openAgents, ...publishing };
+    return withEngine(setup, async (ctx) =>
+      finish(input.io, await resumeRun(ctx, runId), publishing),
     );
   };
 }

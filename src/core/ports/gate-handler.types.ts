@@ -6,6 +6,9 @@ export interface GateRequest {
   /** File name of the artifact under review, e.g. "requirements.md". */
   readonly artifactName: string;
   readonly artifact: string;
+  readonly branch: string;
+  /** When the gate opened (epoch ms); only feedback after it counts. */
+  readonly since: number;
 }
 
 export type GateDecision =

@@ -31,6 +31,7 @@ const state = {
   checkResults: [],
   lastVerdict: null,
   gateFeedback: null,
+  gateOpenedAt: null,
   outcome: null,
   history: [],
 };
@@ -38,6 +39,12 @@ const state = {
 describe("runStateSchema", () => {
   it("accepts a fresh run", () => {
     expect(runStateSchema.parse(state)).toEqual(state);
+  });
+
+  it("defaults gateOpenedAt for runs saved before it existed", () => {
+    const older: Record<string, unknown> = { ...state };
+    delete older["gateOpenedAt"];
+    expect(runStateSchema.parse(older).gateOpenedAt).toBeNull();
   });
 
   it("accepts a run with history, verdict and feedback", () => {

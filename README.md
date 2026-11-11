@@ -4,8 +4,9 @@ Orchestrates AI agents on top of [OpenCode](https://opencode.ai) to implement fe
 A feature request goes through a fixed team of agents — product owner, planner, coder,
 tester and reviewer — with a configurable review loop. The result is a pull request.
 
-> **Status:** early development (phase 2 of 6: local runs). conductor can run locally on
-> a branch (`--no-pr`); pull requests and GitHub Actions follow. See the
+> **Status:** early development (phase 3 of 6: GitHub integration). conductor runs
+> locally and opens a pull request through the `gh` CLI, or works on a branch only
+> (`--no-pr`); GitHub Actions follow. See the
 > [project plan](docs/PLAN.md) (German).
 
 ## How it works
