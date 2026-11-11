@@ -25,7 +25,7 @@ One task per session, finished with a green `verify` and a commit. Good tasks ar
 | ---------------------------- | --------------------------------------------------------------------------------------- |
 | "Implement phase 1"          | "Add the zod schema for `conductor.yaml` as described in PLAN.md chapter 6, with tests" |
 | "Build the OpenCode adapter" | "Implement `AgentRunner.run` for a single session without permissions; see ADR 0003"    |
-| "Add GitHub support"         | "Add `Forge.getIssue` using Octokit, tested against recorded responses"                 |
+| "Add GitHub support"         | "Add `Forge.getIssue` using the `gh` CLI, tested against recorded responses"            |
 
 ## Prompt template
 
@@ -79,7 +79,7 @@ Check in this order:
    changes to core logic.
 3. **Is the code in the right layer?** Decisions in core, I/O in adapters
    ([architecture](architecture.md)).
-4. **Did it invent APIs?** Especially for OpenCode, Octokit and Node APIs.
+4. **Did it invent APIs?** Especially for OpenCode, `gh` and Node APIs.
 5. **Is there a decision without an ADR?**
 6. **Is the documentation updated?**
 

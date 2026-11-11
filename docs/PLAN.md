@@ -195,10 +195,20 @@ interface GateHandler {
   request(gate: GateRequest): Promise<GateDecision>; // approve | revise(feedback) | abort | pending
 }
 interface Forge {
+  // provider-neutral (ADR 0013); IssueRef is opaque, parsed only by the adapter
   getIssue(ref: IssueRef): Promise<Issue>;
-  upsertPullRequest(pr: PullRequestDraft): Promise<PullRequestRef>;
+  findPullRequest(branch: string): Promise<PullRequestRef | null>;
+  createPullRequest(pr: PullRequestDraft): Promise<PullRequestRef>;
+  updatePullRequest(
+    ref: PullRequestRef,
+    patch: PullRequestPatch,
+  ): Promise<void>;
+  setDraft(ref: PullRequestRef, draft: boolean): Promise<void>;
   addLabels(ref: PullRequestRef, labels: string[]): Promise<void>;
-  getGateFeedback(ref: PullRequestRef, since: Date): Promise<GateDecision>;
+  removeLabels(ref: PullRequestRef, labels: string[]): Promise<void>;
+  listReviews(ref: PullRequestRef, since: number): Promise<Review[]>;
+  listComments(ref: PullRequestRef, since: number): Promise<Comment[]>;
+  closingReference(ref: IssueRef): string;
 }
 interface Clock {
   now(): Date;
@@ -447,7 +457,7 @@ Ablauf:
 2. Branch `conductor/<run-id>-<slug>` von `baseBranch`.
 3. `opencode serve` wird als Kindprozess auf freiem Port gestartet, nach dem Lauf beendet.
 4. Gates: interaktiver Prompt mit Anzeige des Artefakts (inkl. offener Fragen).
-5. Am Ende: Squash, Push, PR (sofern nicht `--no-pr`; benötigt `GITHUB_TOKEN`).
+5. Am Ende: Squash, Push, PR (sofern nicht `--no-pr`; benötigt `gh`, angemeldet per `gh auth login` oder `GH_TOKEN`; ADR 0013).
 
 ### 7.2 GitHub Action
 
@@ -536,7 +546,7 @@ Voraussetzung: Das Ziel-Repo bindet das conductor-Devcontainer-Feature ein.
 
 ### 8.1 Feature für Ziel-Repos (`ghcr.io/<owner>/agent-conductor/conductor`)
 
-- Installiert Node (falls nicht vorhanden), OpenCode, `agent-conductor` (npm global).
+- Installiert Node (falls nicht vorhanden), OpenCode, `gh` (ADR 0013), `agent-conductor` (npm global).
 - Optionen: `version`, `opencodeVersion`.
 - Veröffentlicht via `devcontainers/action` nach GHCR.
 
@@ -826,18 +836,43 @@ Akzeptanzkriterien:
 
 **Ziel:** Issue als Input, PR als Output, PR-Reviews/Labels als Gate.
 
+Anbindung über die `gh`-CLI (ADR 0013).
+
 Aufgaben:
 
-- [ ] Forge-Adapter (Octokit): Issue lesen, PR erstellen/aktualisieren (Draft ↔ Ready), Labels, Reviews/Kommentare seit Zeitpunkt lesen
-- [ ] GitHub-Gate-Handler: liefert `pending` → `waiting_for_gate`; beim Resume Auswertung von Review/Label
-- [ ] PR-Body-Renderer (7.4)
-- [ ] CLI: `run --issue`, PR-Erstellung lokal
-- [ ] Tests mit aufgezeichneten/gemockten API-Antworten
+- [ ] Port `src/core/ports/forge.types.ts`:
+  - `getIssue(ref: IssueRef): Promise<Issue>` (`IssueRef` ist ein undurchsichtiger String, den nur der Adapter parst, z. B. `owner/repo#n`; `Issue` = Titel, Body, Labels, URL)
+  - `findPullRequest(branch): Promise<PullRequestRef | null>`
+  - `createPullRequest({ branch, base, title, body, draft }): Promise<PullRequestRef>`
+  - `updatePullRequest(ref, { title?, body? })`, `setDraft(ref, draft: boolean)`
+  - `addLabels(ref, labels)`, `removeLabels(ref, labels)`
+  - `listReviews(ref, since: number)` und `listComments(ref, since: number)` (Autor, `authorCanApprove`, Zustand `approve | request_changes | comment`, Text, Zeitpunkt)
+  - `closingReference(ref): string` für den PR-Body (z. B. `Closes owner/repo#n`)
+  - Alle Typen provider-neutral, keine GitHub-Begriffe im Port (ADR 0013)
+- [ ] zod-Schemas für `Issue`, `PullRequestRef`, `Review`, `Comment` in `core/schemas`; Fake `test/fakes/forge.ts`
+- [ ] Reine Gate-Auswertung in `core` (`evaluateGateFeedback`): nur Reviews und Labels nach `gateOpenedAt` von Nutzern mit `authorCanApprove`. Ein Approve oder das Label `conductor:approved` ergibt `approve`. „Changes requested“ ergibt `revise`, als Feedback dienen Review-Text plus Kommentare. Ohne passende Rückmeldung bleibt das Ergebnis `pending`. Der neueste Eintrag gewinnt.
+- [ ] State: `pullRequest` (Nummer, nullable) und `gateOpenedAt` (Zeitpunkt, nullable), Defaults für bestehende `state.json`
+- [ ] Adapter `src/adapters/github-cli/`: `exec` (wie `adapters/git/exec.ts`, injizierbar), Forge-Implementierung, Fehlerabbildung, Preflight (`gh auth status`, Mindestversion)
+- [ ] `GithubPublisher` (Publisher-Port): Push und danach PR anlegen oder aktualisieren. Bei Stage `gate` bleibt der PR ein Draft, bei `final` wird er Ready, bei `needs_human` bleibt er ein Draft und bekommt das Label `conductor:needs-human`.
+- [ ] `GithubGateHandler` (GateHandler-Port): `request` setzt `gateOpenedAt` und liefert `pending`, das führt zu `waiting_for_gate`. Beim `resume` wird die Gate-Auswertung angewendet, danach wird `conductor:approved` entfernt. `resolveLimit` liefert gemäß `onLimit` `draft_pr` oder `abort`.
+- [ ] Das finale Gate (`gates.final`) entspricht in CI „Changes requested“ auf dem Draft-PR (Akzeptanzkriterium aus Phase 2b)
+- [ ] PR-Body-Renderer (7.4): `core/pipeline/pr-body.ts` existiert bereits. Ergänzt werden die Issue-Referenz über `Forge.closingReference` und ein Hinweis zum Gate-Zustand.
+- [ ] CLI:
+  - `run --issue owner/repo#n` liest das Issue als Input (`kind: "issue"`).
+  - Ohne `--no-pr` werden der GitHub-Publisher und der Terminal-Gate-Handler verwendet; lokal bleiben die Gates also interaktiv.
+  - `--gates github` nutzt PR-Reviews als Gate, auch lokal, und dient zur Simulation.
+  - `resume` liest Reviews und Labels, wenn der Run auf ein GitHub-Gate wartet.
+- [ ] Tests: Adapter gegen aufgezeichnete `gh`-JSON-Fixtures, die exakten `gh`-Argumente werden geprüft; Core-Tests mit Fake-Forge
+- [ ] Doku: `docs/guide/local-usage.md` (Voraussetzung `gh auth login`, `--issue`, PR-Gates), `docs/guide/concepts.md`
 
 Akzeptanzkriterien:
 
-- Lokal `run --issue` erzeugt einen Draft-PR, der nach dem Lauf „Ready" ist
-- Gate über PR-Review lokal simulierbar (`resume` liest Review)
+- Lokal erzeugt `run --issue` einen Draft-PR, der nach dem Lauf „Ready“ ist
+- Gate über PR-Review lokal simulierbar: `run --gates github` endet in
+  `waiting_for_gate`, ein Approve oder „Changes requested“ am PR und anschließend
+  `resume` setzen den Lauf korrekt fort
+- Fehlt `gh` oder die Anmeldung, bricht der Lauf vor dem ersten Agenten mit einer
+  klaren Meldung ab
 
 ### Phase 4 – GitHub Action & Devcontainer-Feature
 
@@ -903,6 +938,7 @@ Aufgaben:
 Offene Punkte (vor der jeweiligen Phase zu klären):
 
 - Erledigt: OpenCode-Anbindung geklärt, siehe ADR 0012 (V2, `@opencode/client` 2.2.5, privater Server).
+- Erledigt: GitHub-Anbindung über die `gh`-CLI statt Octokit (ADR 0013).
 - Lizenz des Pakets (derzeit `UNLICENSED`) vor dem ersten npm-Release festlegen.
 - Erledigt: Reviewer hat standardmäßig keine Shell; Projekte erlauben gezielt Befehle über `roles.reviewer.permissions` (ADR 0012).
 - Phase 4: Mindestanforderungen an den Devcontainer des Ziel-Repos (welche Base-Images werden unterstützt).
@@ -916,7 +952,7 @@ Offene Punkte (vor der jeweiligen Phase zu klären):
 - Paralleler Tester (eigener Worktree)
 - PO-Dialog mit Rückfragen
 - Copilot in CI
-- Weitere Forges (GitLab)
+- Weitere Forges (GitLab via `glab`): neuer Adapter `gitlab-cli` + Config-Option `forge` (ADR 0013); Gate-Semantik (Approvals, Labels) und CI-Integration separat klären
 - Kosten-/Laufzeit-Reporting über mehrere Runs
 - Lokale Isolation über eigenen Worktree pro Run (`workspace: worktree | in-place`, Default zunächst `in-place`): Repo des Nutzers bleibt frei, parallele Runs möglich. Voraussetzungen:
   - Run-Daten außerhalb des Arbeitsverzeichnisses (`.git/conductor/runs/<id>/`, Worktree z. B. unter `.git/conductor/worktrees/<id>/`), eigene ADR
