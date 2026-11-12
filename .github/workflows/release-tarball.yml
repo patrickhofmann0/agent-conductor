@@ -26,7 +26,9 @@ jobs:
         run: npm version "${GITHUB_REF_NAME#v}" --no-git-tag-version --allow-same-version
       - run: bun run build
       - name: Pack
-        run: npm pack --pack-destination "$RUNNER_TEMP/pack"
+        run: |
+          mkdir -p "$RUNNER_TEMP/pack"
+          npm pack --pack-destination "$RUNNER_TEMP/pack"
       - name: Install the tarball with plain Node and npm
         run: |
           mkdir "$RUNNER_TEMP/consumer"
