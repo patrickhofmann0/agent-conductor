@@ -64,7 +64,7 @@ describe("scenario: happy path", () => {
     expect(engine.store.archived.has(RUN_ID)).toBe(true);
     const final = engine.publisher.published.at(-1);
     expect(final?.stage).toBe("final");
-    expect(final?.body).toContain("Closes o/r#42");
+    expect(final?.issueRef).toBe("o/r#42");
     expect(state.costUsd).toBeCloseTo(0.5);
   });
 

@@ -24,6 +24,8 @@ export const finalizeStep: StepHandler = async (ctx, state) => {
     stage: state.needsHuman ? "needs_human" : "final",
     title: state.input.title,
     body,
+    branch: state.branch,
+    issueRef: state.input.ref ?? null,
   });
   if (state.needsHuman) return { ...state, status: "needs_human" };
   return { ...state, status: "done", outcome: "Approved by the reviewer." };

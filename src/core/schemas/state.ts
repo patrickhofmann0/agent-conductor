@@ -92,6 +92,8 @@ export const runStateSchema = z.strictObject({
   lastVerdict: verdictSchema.nullable(),
   /** Human feedback from a gate, consumed by the next run of the gated phase. */
   gateFeedback: z.string().min(1).nullable(),
+  /** When the current gate opened; null outside gates. */
+  gateOpenedAt: z.number().nullable().default(null),
   /** Why the run ended or paused. */
   outcome: z.string().min(1).nullable(),
   history: z.array(phaseRecordSchema),

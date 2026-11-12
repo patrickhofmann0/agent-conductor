@@ -125,11 +125,19 @@ describe("run command", () => {
   });
 
   it.each([
-    [[], true, "run needs a task description."],
-    [["Task"], false, "pass --no-pr"],
-  ])("rejects args %j with noPr %s", async (args, noPr, message) => {
+    [{ args: [] }, "run needs a task description or --issue."],
+    [
+      { args: ["Task"], issue: "#1" },
+      "Pass either a task description or --issue, not both.",
+    ],
+    [{ args: ["Task"], forgeGates: true }, "--gates pr needs a pull request"],
+  ])("rejects %j", async (options, message) => {
     await expect(
-      createRunCommand(agents().open)({ args, noPr, io: io("").io }),
+      createRunCommand(agents().open)({
+        noPr: true,
+        ...options,
+        io: io("").io,
+      }),
     ).rejects.toThrow(message);
   });
 });
@@ -138,11 +146,21 @@ describe("resume command", () => {
   it.each([
     [[], true, "resume needs exactly one run ID."],
     [["a", "b"], true, "resume needs exactly one run ID."],
-    [["a"], false, "pass --no-pr"],
   ])("rejects args %j with noPr %s", async (args, noPr, message) => {
     await expect(
       createResumeCommand(agents().open)({ args, noPr, io: io("").io }),
     ).rejects.toThrow(message);
+  });
+
+  it("rejects --gates pr with --no-pr", async () => {
+    await expect(
+      createResumeCommand(agents().open)({
+        args: ["a"],
+        noPr: true,
+        forgeGates: true,
+        io: io("").io,
+      }),
+    ).rejects.toThrow("--gates pr needs a pull request");
   });
 
   it("fails for an unknown run", async () => {

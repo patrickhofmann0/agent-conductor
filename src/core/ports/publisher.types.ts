@@ -5,6 +5,9 @@ export interface PublishRequest {
   readonly stage: PublishStage;
   readonly title: string;
   readonly body: string;
+  readonly branch: string;
+  /** The issue the run implements, closed by the final pull request. */
+  readonly issueRef: string | null;
 }
 
 /**

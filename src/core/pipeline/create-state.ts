@@ -37,6 +37,7 @@ export function createRunState(run: NewRun): RunState {
     checkResults: [],
     lastVerdict: null,
     gateFeedback: null,
+    gateOpenedAt: null,
     outcome: null,
     history: [],
   };

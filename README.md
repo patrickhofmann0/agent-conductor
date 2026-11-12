@@ -4,8 +4,9 @@ Orchestrates AI agents on top of [OpenCode](https://opencode.ai) to implement fe
 A feature request goes through a fixed team of agents — product owner, planner, coder,
 tester and reviewer — with a configurable review loop. The result is a pull request.
 
-> **Status:** early development (phase 2 of 6: local runs). conductor can run locally on
-> a branch (`--no-pr`); pull requests and GitHub Actions follow. See the
+> **Status:** early development (phase 3 of 6: GitHub integration). conductor runs
+> locally and opens a pull request through the `gh` CLI, or works on a branch only
+> (`--no-pr`); GitHub Actions follow. See the
 > [project plan](docs/PLAN.md) (German).
 
 ## How it works
@@ -45,15 +46,16 @@ conductor runs the same way locally (in a devcontainer) and in GitHub Actions.
 
 ## Documentation
 
-| You want to…                     | Read                                                                                       |
-| -------------------------------- | ------------------------------------------------------------------------------------------ |
-| Understand how conductor works   | [Concepts](docs/guide/concepts.md)                                                         |
-| Run conductor locally            | [Running locally](docs/guide/local-usage.md)                                               |
-| Configure conductor              | [Configuration reference](docs/guide/configuration.md)                                     |
-| Understand the decisions         | [Architecture decision records](docs/adr)                                                  |
-| See the roadmap                  | [Project plan](docs/PLAN.md) (German)                                                      |
-| Contribute                       | [CONTRIBUTING.md](CONTRIBUTING.md)                                                         |
-| Work on this repo with AI agents | [Working with agents](docs/contributing/working-with-agents.md) and [AGENTS.md](AGENTS.md) |
+| You want to…                        | Read                                                                                       |
+| ----------------------------------- | ------------------------------------------------------------------------------------------ |
+| Understand how conductor works      | [Concepts](docs/guide/concepts.md)                                                         |
+| Run conductor locally               | [Running locally](docs/guide/local-usage.md)                                               |
+| Install conductor in other projects | [Installing](docs/guide/install-local.md)                                                  |
+| Configure conductor                 | [Configuration reference](docs/guide/configuration.md)                                     |
+| Understand the decisions            | [Architecture decision records](docs/adr)                                                  |
+| See the roadmap                     | [Project plan](docs/PLAN.md) (German)                                                      |
+| Contribute                          | [CONTRIBUTING.md](CONTRIBUTING.md)                                                         |
+| Work on this repo with AI agents    | [Working with agents](docs/contributing/working-with-agents.md) and [AGENTS.md](AGENTS.md) |
 
 A getting-started guide for GitHub Actions follows with phases 3 and 4.
 

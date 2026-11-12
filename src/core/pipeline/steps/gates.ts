@@ -22,13 +22,14 @@ function applyDecision(
   state: RunState,
   decision: GateDecision,
 ): RunState {
+  const closed = { ...state, outcome: null, gateOpenedAt: null };
   switch (decision.kind) {
     case "approve":
-      return spec.approve({ ...state, outcome: null });
+      return spec.approve(closed);
     case "revise":
-      return spec.revise({ ...state, outcome: null }, decision.feedback);
+      return spec.revise(closed, decision.feedback);
     case "abort":
-      return { ...state, status: "aborted", outcome: decision.reason };
+      return { ...closed, status: "aborted", outcome: decision.reason };
     case "pending":
       return {
         ...state,
@@ -41,19 +42,27 @@ function applyDecision(
 function createGateStep(spec: GateSpec): StepHandler {
   return async (ctx, state) => {
     const artifact = await spec.content(ctx, state);
+    const opened = {
+      ...state,
+      gateOpenedAt: state.gateOpenedAt ?? ctx.deps.clock.now(),
+    };
     await ctx.deps.publisher.publish({
       runId: state.runId,
       stage: "gate",
       title: state.input.title,
       body: renderGateBody(spec.artifact, artifact),
+      branch: state.branch,
+      issueRef: state.input.ref ?? null,
     });
     const decision = await ctx.deps.gates.request({
       runId: state.runId,
       gate: spec.gate,
       artifactName: spec.artifact,
       artifact,
+      branch: state.branch,
+      since: opened.gateOpenedAt,
     });
-    return applyDecision(spec, state, decision);
+    return applyDecision(spec, opened, decision);
   };
 }
 

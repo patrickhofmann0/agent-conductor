@@ -34,6 +34,7 @@ const STATE: RunState = {
   checkResults: [],
   lastVerdict: null,
   gateFeedback: null,
+  gateOpenedAt: 500,
   outcome: null,
   history: [],
 };

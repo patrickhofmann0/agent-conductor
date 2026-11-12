@@ -11,6 +11,8 @@ const REQUEST: GateRequest = {
   gate: "po",
   artifactName: "requirements.md",
   artifact: "# Requirements\n\n- Export CSV\n",
+  branch: "conductor/run-1",
+  since: 0,
 };
 
 interface Setup {

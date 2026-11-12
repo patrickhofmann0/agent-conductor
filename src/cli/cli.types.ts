@@ -9,10 +9,14 @@ export interface CliIo {
   readonly env: Readonly<Record<string, string | undefined>>;
 }
 
-interface CommandInput {
+export interface CommandInput {
   /** Positional arguments after the command name. */
   readonly args: readonly string[];
   readonly noPr: boolean;
+  /** `--issue <ref>`: the issue to implement instead of a task text. */
+  readonly issue?: string | undefined;
+  /** `--gates pr`: gate on pull request reviews instead of the terminal. */
+  readonly forgeGates?: boolean;
   readonly io: CliIo;
 }
 

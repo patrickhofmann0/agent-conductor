@@ -17,12 +17,17 @@ Reviewer** – wobei zwischen Reviewer und Coder/Tester eine konfigurierbare Sch
 existiert. Das Framework läuft identisch:
 
 - **lokal** in einem Devcontainer (CLI `conductor`)
-- **in GitHub Actions** (im selben Devcontainer via `devcontainers/ci`)
+- **in GitHub Actions** (wiederverwendbarer Workflow, Devcontainer optional; ADR 0014)
 
 Das Ergebnis eines Laufs ist ein **Pull Request**.
 
 Das Projekt selbst wird **AI-first** entwickelt. Deshalb gilt für dieses Repo vom
 ersten Commit an ein Satz **harter, maschinell durchgesetzter Leitplanken** (Kapitel 9).
+
+Zusätzlich bietet conductor einen **Guardrail-Assistenten** (`conductor guardrails`,
+Abschnitt 4.5, ADR 0015): Er unterstützt Entwickler eines Ziel-Repos dabei, sichere
+Leitplanken und Quality Gates einzurichten – sprachübergreifend, von der Analyse bis
+zum umgesetzten Pull Request.
 
 ### Nicht-Ziele (v1)
 
@@ -68,12 +73,13 @@ ersten Commit an ein Satz **harter, maschinell durchgesetzter Leitplanken** (Kap
 | D28 | Limits                   | Iterationen, Timeout (pro Phase + gesamt), Kostenlimit (USD)                                                                                             |
 | D29 | Agent-Rechte             | Rollenbasiert minimal                                                                                                                                    |
 | D30 | Resume                   | `conductor resume <run-id>` aus `state.json`                                                                                                             |
-| D31 | Devcontainer             | Devcontainer-Feature für Ziel-Repos + eigener Devcontainer für Framework-Entwicklung                                                                     |
-| D32 | CI-Umgebung              | Action läuft im Devcontainer (`devcontainers/ci`)                                                                                                        |
+| D31 | Devcontainer             | Eigener Devcontainer für Framework-Entwicklung; für Ziel-Repos optional (ADR 0014)                                                                       |
+| D32 | CI-Umgebung              | Wiederverwendbarer Workflow auf normalem Runner; Devcontainer optional (ADR 0014)                                                                        |
 | D33 | CI-Trigger               | Issue-Label `conductor`                                                                                                                                  |
 | D34 | Sprache                  | Prompts Englisch, Artefakte/PR-Texte in konfigurierbarer Sprache                                                                                         |
 | D35 | Linter                   | ESLint (typed) + Prettier                                                                                                                                |
 | D36 | Hosting                  | GitHub, mit Branch Protection und CODEOWNERS                                                                                                             |
+| D37 | Guardrail-Assistent      | Eigener Modus `conductor guardrails` in v1: Analyse, Gap-Analyse, Vorschlag, Umsetzung als PR; mehrsprachig über Sprach-Profile (ADR 0015)               |
 
 Jede dieser Entscheidungen wird in Phase 0 als ADR in `docs/adr/` festgehalten.
 
@@ -117,12 +123,6 @@ agent-conductor/
 │   │   ├── mutation.yml        # Stryker (PR + nightly)
 │   │   └── release.yml         # release-please + npm publish
 │   └── CODEOWNERS
-├── action/                     # Composite GitHub Action (Phase 4)
-│   └── action.yml
-├── devcontainer-feature/       # Devcontainer-Feature (Phase 4)
-│   └── src/agent-conductor/
-│       ├── devcontainer-feature.json
-│       └── install.sh
 ├── docs/
 │   ├── PLAN.md                 # dieses Dokument
 │   └── adr/                    # Architecture Decision Records
@@ -195,10 +195,25 @@ interface GateHandler {
   request(gate: GateRequest): Promise<GateDecision>; // approve | revise(feedback) | abort | pending
 }
 interface Forge {
+  // provider-neutral (ADR 0013); IssueRef is opaque, parsed only by the adapter
   getIssue(ref: IssueRef): Promise<Issue>;
-  upsertPullRequest(pr: PullRequestDraft): Promise<PullRequestRef>;
+  findPullRequest(branch: string): Promise<PullRequestRef | null>;
+  createPullRequest(pr: PullRequestDraft): Promise<PullRequestRef>;
+  updatePullRequest(
+    ref: PullRequestRef,
+    patch: PullRequestPatch,
+  ): Promise<void>;
+  setDraft(ref: PullRequestRef, draft: boolean): Promise<void>;
   addLabels(ref: PullRequestRef, labels: string[]): Promise<void>;
-  getGateFeedback(ref: PullRequestRef, since: Date): Promise<GateDecision>;
+  removeLabels(ref: PullRequestRef, labels: string[]): Promise<void>;
+  listReviews(ref: PullRequestRef, since: number): Promise<Review[]>;
+  listComments(ref: PullRequestRef, since: number): Promise<Comment[]>;
+  closingReference(ref: IssueRef): string;
+}
+interface RepoInspector {
+  // read-only, used by the guardrail assistant (4.5)
+  listFiles(globs: string[]): Promise<string[]>;
+  readFile(path: string): Promise<string>;
 }
 interface Clock {
   now(): Date;
@@ -273,19 +288,67 @@ Ein `approve` bei roten Pflicht-Checks wird vom Framework **überschrieben** zu
 | `fail`               | Run-Status `failed`, Exit-Code ≠ 0, Branch bleibt mit Zwischencommits erhalten           |
 | `ask`                | Lokal: Terminal-Prompt (weitere N Iterationen / draft_pr / abort). CI: wie `draft_pr`    |
 
+### 4.5 Guardrail-Assistent (`conductor guardrails`, ADR 0015)
+
+Eigene Pipeline neben der Feature-Pipeline. Ziel: Entwickler eines Ziel-Repos beim
+Aufbau sicherer Leitplanken und Quality Gates unterstützen, bevor dort Agents arbeiten.
+
+1. **Analyse** (Guardrail-Analyst, read-only): erkennt Sprachen, Build-Tools,
+   Testframeworks, CI, vorhandene Linter/Hooks – pro Teilprojekt (Monorepos).
+   Ergebnis: `inventory.json` (Schema-validiert).
+2. **Gap-Analyse:** Abgleich des Inventars mit dem Leitplanken-Katalog (s. u.) im
+   gewählten Profil (`baseline` | `strict`). Rein in `core`, deterministisch.
+3. **Vorschlag:** `guardrails-proposal.md` mit priorisierten Maßnahmen und Begründung
+   sowie Vorschlag für `checks` und `guardrails.paths` in `conductor.yaml`.
+4. **Gate** (immer aktiv): Mensch wählt Maßnahmen aus (approve / revise / abort).
+5. **Umsetzung:** Coder richtet die Werkzeuge ein, Tester prüft, dass das neue
+   `verify`-Kommando läuft und tatsächlich Fehler erkennt (z. B. absichtlicher Verstoß).
+6. **Review:** Reviewer prüft gezielt auf Abschwächung (gesenkte Schwellen, Ausnahmen,
+   nicht ausgeführte Checks). Ergebnis ist ein eigener PR mit Label `guardrails-change`,
+   der keinen Produktcode ändert.
+
+Zustände:
+
+```text
+created → gr_analyzing → gr_gap_analysis → gr_gate
+        → iter_coder → iter_tester → iter_checks → iter_review
+        → finalizing → done
+```
+
+**Leitplanken-Katalog:** sprachunabhängiger Kern (ein `verify`-Kommando, Git-Hooks,
+Branch-Protection, Schutz der Leitplanken-Dateien, `AGENTS.md`, Coverage- und
+Mutationsschwellen) plus **Sprach-Profile**, die jedes Gate auf konkrete Werkzeuge abbilden:
+
+| Gate        | TypeScript/JS      | Python              | Go                 | Java/Kotlin       |
+| ----------- | ------------------ | ------------------- | ------------------ | ----------------- |
+| Typen       | tsc strict         | mypy/pyright strict | Compiler, `go vet` | Compiler          |
+| Lint/Format | ESLint, Prettier   | ruff                | golangci-lint      | Checkstyle/detekt |
+| Architektur | dependency-cruiser | import-linter       | go-arch-lint       | ArchUnit          |
+| Dead Code   | knip               | vulture             | deadcode           | (IDE/Lint-Regeln) |
+| Coverage    | Vitest/Jest        | pytest-cov          | `go test -cover`   | JaCoCo            |
+| Mutation    | Stryker            | mutmut              | gremlins           | PIT               |
+
+Der Katalog ist **Daten** (zod-Schema in `core/schemas`), kein Code; neue Sprachen
+kommen ohne Änderung der Kernlogik hinzu.
+
+Sicherheitsregeln: Analyse ist read-only; Schreibrechte erst nach dem Gate; bestehende
+Gates dürfen nur verschärft, nie abgeschwächt werden (Verstoß → Finding `severity: high`);
+Integritätsprüfung (5.3) gilt unverändert.
+
 ---
 
 ## 5. Rollen, Rechte und Sicherheit
 
 ### 5.1 Rollen
 
-| Rolle        | Input                                                            | Output (Datei in `.conductor/runs/<id>/`)                                                           | Rechte                                         |
-| ------------ | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| **PO**       | Issue/Freitext, Repo (read)                                      | `requirements.md`: Ziel, User Stories, Akzeptanzkriterien, Nicht-Ziele, **offene Fragen**, Annahmen | read-only, webfetch                            |
-| **Planner**  | requirements.md, Repo                                            | `plan.md`: betroffene Dateien, Schritte, Teststrategie, Risiken, Leitplanken-Vorschläge             | read-only, webfetch                            |
-| **Coder**    | requirements, plan, ggf. Review-Findings                         | Codeänderungen, `coder-notes.md`                                                                    | edit, bash (ohne git), keine Leitplanken-Pfade |
-| **Tester**   | requirements, plan, Diff, ggf. Findings                          | Tests, statische Regeln, CI-Checks, `tester-notes.md`                                               | edit, bash (ohne git)                          |
-| **Reviewer** | requirements, plan, Diff, Check-Ergebnisse, Leitplanken-Verstöße | `review-<n>.json`                                                                                   | read-only, bash nur lesend                     |
+| Rolle                 | Input                                                            | Output (Datei in `.conductor/runs/<id>/`)                                                           | Rechte                                         |
+| --------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| **PO**                | Issue/Freitext, Repo (read)                                      | `requirements.md`: Ziel, User Stories, Akzeptanzkriterien, Nicht-Ziele, **offene Fragen**, Annahmen | read-only, webfetch                            |
+| **Planner**           | requirements.md, Repo                                            | `plan.md`: betroffene Dateien, Schritte, Teststrategie, Risiken, Leitplanken-Vorschläge             | read-only, webfetch                            |
+| **Coder**             | requirements, plan, ggf. Review-Findings                         | Codeänderungen, `coder-notes.md`                                                                    | edit, bash (ohne git), keine Leitplanken-Pfade |
+| **Tester**            | requirements, plan, Diff, ggf. Findings                          | Tests, statische Regeln, CI-Checks, `tester-notes.md`                                               | edit, bash (ohne git)                          |
+| **Reviewer**          | requirements, plan, Diff, Check-Ergebnisse, Leitplanken-Verstöße | `review-<n>.json`                                                                                   | read-only, bash nur lesend                     |
+| **Guardrail-Analyst** | Repo (read), Leitplanken-Katalog                                 | `inventory.json`, `guardrails-proposal.md` (nur im Modus `guardrails`, 4.5)                         | read-only, webfetch                            |
 
 ### 5.2 OpenCode-Permissions (ADR 0012)
 
@@ -396,6 +459,10 @@ guardrails:
     - "eslint.config.*"
     - ".dependency-cruiser.*"
     - ".github/workflows/**"
+  assistant: # nur für `conductor guardrails` (4.5)
+    profile: strict # baseline | strict
+    languages: [auto] # auto | typescript | python | go | java | kotlin
+    exclude: ["vendor/**"]
 
 git:
   baseBranch: main
@@ -447,49 +514,46 @@ Ablauf:
 2. Branch `conductor/<run-id>-<slug>` von `baseBranch`.
 3. `opencode serve` wird als Kindprozess auf freiem Port gestartet, nach dem Lauf beendet.
 4. Gates: interaktiver Prompt mit Anzeige des Artefakts (inkl. offener Fragen).
-5. Am Ende: Squash, Push, PR (sofern nicht `--no-pr`; benötigt `GITHUB_TOKEN`).
+5. Am Ende: Squash, Push, PR (sofern nicht `--no-pr`; benötigt `gh`, angemeldet per `gh auth login` oder `GH_TOKEN`; ADR 0013).
 
-### 7.2 GitHub Action
+### 7.2 GitHub Action (ADR 0014)
 
-**Trigger-Workflow (im Ziel-Repo, von `conductor init` erzeugt):**
+**Workflow im Ziel-Repo (von `conductor init --ci` erzeugt):**
 
 ```yaml
+name: conductor
 on:
   issues: { types: [labeled] }
   pull_request_review: { types: [submitted] }
   pull_request: { types: [labeled] }
 
-concurrency:
-  group: conductor-${{ github.event.issue.number || github.event.pull_request.number }}
-  cancel-in-progress: false
-
 jobs:
   conductor:
-    if: <label == conductor | review on conductor/* branch | label == conductor:approved>
-    runs-on: ubuntu-latest
+    uses: <owner>/agent-conductor/.github/workflows/conductor-reusable.yml@v1
     permissions: { contents: write, pull-requests: write, issues: write }
-    steps:
-      - uses: actions/checkout@v4
-        with: { fetch-depth: 0 }
-      - uses: <owner>/agent-conductor/action@v1
-        with:
-          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+    secrets:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 ```
 
-**Ablauf in CI:**
+Einmalig im Ziel-Repo: Secret anlegen, „Allow GitHub Actions to create and approve pull
+requests“ aktivieren, `limits.maxCostUsd` in `conductor.yaml` setzen.
 
-1. Label `conductor` am Issue → `run --issue`.
-2. Nach PO: Draft-PR wird erstellt mit `requirements.md` im Branch und im PR-Body;
-   Zustand `waiting_for_gate`, Job endet.
-3. PR-Review „Approve" oder Label `conductor:approved` → `resume`; Label wird entfernt.
-4. PR-Review „Request changes" → `resume` mit Review-Kommentaren als Feedback, Phase
-   wird wiederholt.
-5. Analog für Planner-Gate.
-6. Schleife läuft ohne Gate durch. Am Ende: Squash, Force-Push, PR wird „Ready for
-   review" (oder bleibt Draft + `conductor:needs-human`).
+**Wiederverwendbarer Workflow (in diesem Repo):** Concurrency pro Issue/PR, Checkout
+(`fetch-depth: 0`, bei PR-Events der PR-Branch), conductor und OpenCode installieren
+(bis Phase 5 aus dem Quellcode gebaut), `conductor ci`, Artefakte als Actions-Artifact.
 
-Die Action nutzt `devcontainers/ci`, um im Devcontainer des Ziel-Repos zu laufen.
-Voraussetzung: Das Ziel-Repo bindet das conductor-Devcontainer-Feature ein.
+**`conductor ci`:** liest das Event (`GITHUB_EVENT_NAME`, `GITHUB_EVENT_PATH`) und
+entscheidet in `core/ci/` provider-neutral:
+
+1. Label `conductor` am Issue (von jemandem mit Schreibrecht) → `run --issue <ref> --gates pr`.
+2. Nach PO: Draft-PR mit `requirements.md`; Zustand `waiting_for_gate`, Job endet.
+3. Review auf einem Branch `conductor/*` oder Label `conductor:approved` → `resume --gates pr <run-id>`
+   (Run-ID aus dem Branchnamen). Die Gate-Auswertung aus Phase 3 entscheidet über
+   approve, revise oder weiter warten.
+4. Analog für Planner- und finales Gate.
+5. Schleife läuft ohne Gate durch. Am Ende: Squash, Force-Push, PR wird „Ready for
+   review“ (oder bleibt Draft + `conductor:needs-human`).
+6. Alle anderen Events → `skip` mit Begründung im Log.
 
 ### 7.3 Run-State
 
@@ -534,11 +598,12 @@ Voraussetzung: Das Ziel-Repo bindet das conductor-Devcontainer-Feature ein.
 
 ## 8. Devcontainer
 
-### 8.1 Feature für Ziel-Repos (`ghcr.io/<owner>/agent-conductor/conductor`)
+### 8.1 Devcontainer in Ziel-Repos (optional, ADR 0014)
 
-- Installiert Node (falls nicht vorhanden), OpenCode, `agent-conductor` (npm global).
-- Optionen: `version`, `opencodeVersion`.
-- Veröffentlicht via `devcontainers/action` nach GHCR.
+- Kein Pflicht-Feature: Der Workflow läuft standardmäßig auf einem normalen Runner.
+- Später optional: Input `devcontainer: true` führt `conductor ci` im Devcontainer des
+  Ziel-Repos aus (`devcontainers/ci`); dafür ggf. ein Feature, das Node, OpenCode, `gh`
+  und `agent-conductor` installiert (Backlog).
 
 ### 8.2 Devcontainer für dieses Projekt
 
@@ -826,37 +891,77 @@ Akzeptanzkriterien:
 
 **Ziel:** Issue als Input, PR als Output, PR-Reviews/Labels als Gate.
 
+Anbindung über die `gh`-CLI (ADR 0013).
+
 Aufgaben:
 
-- [ ] Forge-Adapter (Octokit): Issue lesen, PR erstellen/aktualisieren (Draft ↔ Ready), Labels, Reviews/Kommentare seit Zeitpunkt lesen
-- [ ] GitHub-Gate-Handler: liefert `pending` → `waiting_for_gate`; beim Resume Auswertung von Review/Label
-- [ ] PR-Body-Renderer (7.4)
-- [ ] CLI: `run --issue`, PR-Erstellung lokal
-- [ ] Tests mit aufgezeichneten/gemockten API-Antworten
+- [x] Port `src/core/ports/forge.types.ts` (provider-neutral, ADR 0013):
+  - `getIssue(ref)`: `ref` ist ein undurchsichtiger String, den nur der Adapter parst (`owner/repo#n`, `#n`); `Issue` = Ref, Titel, Body, URL
+  - `findPullRequest(branch)`, `createPullRequest({ branch, base, title, body, draft })`, `updatePullRequest(pr, { title, body })`, `setDraft(pr, draft)`
+  - `addLabels(pr, labels)`, `removeLabels(pr, labels)`
+  - `listReviews(pr, since)` und `listComments(pr, since)` (Autor, `authorCanApprove`, Zustand `approve | request_changes | comment`, Text, Zeitpunkt)
+  - `closingReference(ref)` für den PR-Body (z. B. `Closes owner/repo#n`)
+- [x] Fake `test/fakes/fake-forge.ts`. Abweichung: keine zod-Schemas für Forge-Typen in `core/schemas`; unbekannte Daten kommen nur im Adapter an und werden dort validiert
+- [x] Reine Gate-Auswertung `core/forge/gate-feedback.ts`: zählt nur Rückmeldungen von Nutzern mit `authorCanApprove` nach `gateOpenedAt`. Das Label `conductor:approved` oder das neueste entscheidende Review „Approve“ ergibt `approve`. „Changes requested“ ergibt `revise` mit allen Review-Texten und Kommentaren bis dahin. Sonst `pending`
+- [x] State: `gateOpenedAt` (Default `null` für bestehende `state.json`). Der Gate-Schritt setzt den Wert beim ersten Aufruf und löscht ihn bei einer Entscheidung. Abweichung: `pullRequest` wird nicht gespeichert, der PR wird über den Branch gefunden
+- [x] Adapter `src/adapters/github-cli/`: `gh.ts` (Subprozess, Body über stdin, Fehlerabbildung), `gh-forge.ts`, `responses.ts` (zod), `refs.ts`, `preflight.ts` (Mindestversion 2.40.0, `gh auth status`)
+- [x] Publisher `core/forge/forge-publisher.ts`: Push und danach PR anlegen oder aktualisieren. Bei `gate` bleibt der PR ein Draft, bei `final` wird er Ready (mit `closingReference`), bei `needs_human` bleibt er ein Draft mit dem Label `conductor:needs-human`
+- [x] Gate-Handler `core/forge/forge-gate.ts`: Auswertung bei jedem Aufruf, also auch beim `resume`; danach wird `conductor:approved` entfernt. `resolveLimit` liefert `draft_pr`
+- [x] Das finale Gate (`gates.final`) entspricht „Changes requested“ auf dem Draft-PR (Akzeptanzkriterium aus Phase 2b)
+- [x] PR-Body: `Closes …` kommt vom Forge-Publisher statt aus dem Renderer; der Gate-Hinweis kommt aus `renderGateBody`
+- [x] CLI:
+  - `run --issue <ref>` liest das Issue (auch mit `--no-pr`)
+  - Ohne `--no-pr` werden der Forge-Publisher und weiterhin Terminal-Gates verwendet
+  - `--gates pr` nutzt PR-Reviews als Gate, gilt für `run`, `resume` und `revise`
+  - `revise` funktioniert jetzt auch ohne `--no-pr`
+- [x] Tests: Adapter gegen aufgezeichnete `gh`-Ausgaben mit Prüfung der exakten Argumente; Core- und CLI-Tests mit Fake-Forge und einem Bare-Repo als `origin`
+- [x] Doku: `docs/guide/local-usage.md`, `docs/guide/concepts.md`, README
+- [ ] Manueller Test gegen ein echtes GitHub-Repository (Akzeptanzkriterien unten)
 
 Akzeptanzkriterien:
 
-- Lokal `run --issue` erzeugt einen Draft-PR, der nach dem Lauf „Ready" ist
-- Gate über PR-Review lokal simulierbar (`resume` liest Review)
+- Lokal erzeugt `run --issue` einen Draft-PR, der nach dem Lauf „Ready“ ist
+- Gate über PR-Review lokal simulierbar: `run --gates pr` endet in
+  `waiting_for_gate`, ein Approve oder „Changes requested“ am PR und anschließend
+  `resume` setzen den Lauf korrekt fort
+- Fehlt `gh` oder die Anmeldung, bricht der Lauf vor dem ersten Agenten mit einer
+  klaren Meldung ab
 
-### Phase 4 – GitHub Action & Devcontainer-Feature
+### Phase 4 – GitHub Actions
 
-**Ziel:** Vollautomatischer Lauf in CI im Devcontainer.
+**Ziel:** Ein Lauf passiert vollständig in GitHub: Label am Issue → Draft-PR → Approves
+im PR → fertiger PR. Ziel-Repos brauchen dafür nur eine kurze Workflow-Datei (ADR 0014).
 
 Aufgaben:
 
-- [ ] Devcontainer-Feature (8.1) + Veröffentlichung nach GHCR
-- [ ] Composite Action (`action/action.yml`) mit `devcontainers/ci`; Inputs für Provider-Keys, Config-Pfad
-- [ ] Event-Mapping: `issues.labeled` → `run`, `pull_request_review.submitted` / `pull_request.labeled` → `resume`
-- [ ] Concurrency pro Issue/PR
-- [ ] `conductor init` erzeugt zusätzlich den Workflow und ergänzt `devcontainer.json`
-- [ ] Archivierung der Artefakte als Actions-Artifact
+- [ ] `core/ci/`: neutrale Event-Typen (`issue_labeled`, `review_submitted`, `approval_labeled`, `ignored`, jeweils mit `actorCanApprove`) und reine Funktion `dispatch(event, config)` → `run` | `resume` | `skip` (Trigger-Label, Branch-Präfix, Schreibrecht, Run-ID aus Branch)
+- [ ] Port `CiEnvironment` (`readEvent()`); Adapter `adapters/github-actions/` liest `GITHUB_EVENT_NAME` und `GITHUB_EVENT_PATH` (zod), getestet mit aufgezeichneten Event-Payloads
+- [ ] CLI `conductor ci`: Event lesen, `dispatch`, dann `run`/`resume` mit `--gates pr`; verlangt `limits.maxCostUsd`; Exit-Code 0 bei `skip`
+- [ ] CLI `conductor init --ci`: erzeugt `.github/workflows/conductor.yml` (Aufruf des wiederverwendbaren Workflows); überschreibt nichts
+- [ ] Wiederverwendbarer Workflow `.github/workflows/conductor-reusable.yml` (der Name `conductor.yml` bleibt frei für den Aufrufer-Workflow dieses Repos in Phase 6): Concurrency pro Issue/PR, Checkout, Installation (bis Phase 5 aus dem Quellcode), `conductor ci`, Artefakt-Upload. **Eigener PR mit Label `guardrails-change`**, ohne Änderungen an `src/` und `test/`
+- [ ] Doku: `docs/guide/getting-started-ci.md` (Einrichtung, Ablauf, Kosten, Sicherheit: Issue-Text ist Prompt-Input)
 
 Akzeptanzkriterien:
 
 - In einem Test-Repo: Label setzen → Draft-PR mit Requirements → Approve → Plan →
   Approve → fertiger PR mit einem Commit
 - „Request changes" am Plan führt zu überarbeitetem Plan
+- Events, die conductor nicht betreffen, beenden den Job in wenigen Sekunden mit `skip`
+
+### Phase 5a – Tarball-Release (ohne npm, vorziehbar)
+
+**Ziel:** conductor lässt sich ohne Bun und ohne npm-Publish in anderen Projekten
+installieren, auch bevor Phase 4 (CI) und Keys verfügbar sind.
+
+Aufgaben:
+
+- [ ] Release-Workflow (`.github/workflows/release-tarball.yml`), getriggert durch Tag `v*`: `verify`, Version aus dem Tag setzen, `npm pack`, Install-Test des Tarballs unter Node 22 (`conductor --version`), Tarball an GitHub Release anhängen. **Eigener PR mit Label `guardrails-change`**, ohne Änderungen an `src/` und `test/`
+- [ ] Doku `docs/guide/install-local.md`: Installation aus Release (`gh release download`, `npm i -g ./agent-conductor-<version>.tgz`) und Entwicklungsweg via `bun link`; lokaler Lauf mit Copilot-Login ohne API-Key
+
+Akzeptanzkriterien:
+
+- Das Tarball installiert unter Node 22 ohne Bun, `conductor --version` läuft
+- Ein Tag erzeugt ein Release mit angehängtem `.tgz`
 
 ### Phase 5 – E2E & Release
 
@@ -866,12 +971,13 @@ Aufgaben:
 
 - [ ] `examples/sample-repo` mit kleinem Feature-Issue
 - [ ] E2E-Workflow (manuell + nightly) gegen echtes Modell, mit Kostenlimit
-- [ ] release-please, npm-Publish mit Provenance, Feature-Release, Action-Tag `v1`
+- [ ] release-please, npm-Publish mit Provenance, Tag `v1` für den wiederverwendbaren Workflow
 - [ ] README: Quickstart lokal, Quickstart CI, Config-Referenz (aus Schema generiert)
 
 Akzeptanzkriterien:
 
-- `npx agent-conductor --version` funktioniert unter Node 20 ohne Bun
+- `npx agent-conductor --version` funktioniert unter Node 22 ohne Bun
+- Der wiederverwendbare Workflow installiert das veröffentlichte Paket statt aus dem Quellcode zu bauen
 - E2E-Lauf grün
 
 ### Phase 6 – Dogfooding
@@ -885,6 +991,28 @@ Aufgaben:
 - [ ] Erste Features (Backlog, Kapitel 12) über conductor umsetzen
 - [ ] Learnings → Prompt-Verbesserungen, ADRs
 
+### Phase 7 – Guardrail-Assistent
+
+**Ziel:** `conductor guardrails` richtet in beliebigen Ziel-Repos sichere Leitplanken
+und Quality Gates ein (4.5, ADR 0015).
+
+Aufgaben:
+
+- [ ] Schemas: Leitplanken-Katalog, Sprach-Profile, `inventory.json`, Config-Block `guardrails.assistant`
+- [ ] Port `RepoInspector` + Adapter (Dateisystem) + Fake
+- [ ] Core: Gap-Analyse (Inventar × Katalog × Profil → priorisierte Maßnahmen), Abschwächungs-Erkennung
+- [ ] Rolle Guardrail-Analyst mit Default-Prompt; Pipeline-Zustände `gr_*`
+- [ ] Sprach-Profile TypeScript/JS, Python, Go, Java/Kotlin
+- [ ] CLI `conductor guardrails [--profile] [--report-only]`, Gate lokal und in CI
+- [ ] Doku in `docs/` (Nutzung, Katalog erweitern)
+
+Akzeptanzkriterien:
+
+- Je ein Beispiel-Repo pro Sprache: Lauf erzeugt PR, dessen `verify` grün ist und einen eingebauten Verstoß erkennt
+- Monorepo mit zwei Sprachen wird pro Teilprojekt korrekt behandelt
+- `--report-only` ändert keine Dateien
+- Versuchte Abschwächung eines bestehenden Gates führt zu einem `high`-Finding
+
 ---
 
 ## 11. Risiken & offene Punkte
@@ -895,14 +1023,18 @@ Aufgaben:
 | Kostenangaben aus OpenCode ungenau/fehlend (z. B. Copilot)                           | Kostenlimit greift nicht     | Fallback auf Token-basierte Schätzung, Warnung                                                                 |
 | Agents umgehen `git`-Deny (z. B. über Script-Dateien)                                | Integritätsverlust           | Integritätsprüfung nach jeder Phase (5.3) → `failed`                                                           |
 | Coder umgeht Leitplanken durch Änderungen außerhalb der Patterns (z. B. Test-Helper) | Tests geschwächt             | Tester-Diff zählt zur Leitplanken-Menge; Reviewer-Prompt prüft explizit                                        |
-| `devcontainers/ci` langsam                                                           | Lange CI-Zeiten              | Prebuilt Images via `cacheFrom`                                                                                |
+| Installation in CI langsam (vor Phase 5: Build aus Quellcode)                        | Lange CI-Zeiten              | Ab Phase 5 veröffentlichtes Paket; Cache für Bun/npm im Workflow                                               |
 | Force-Push überschreibt menschliche Commits im PR                                    | Datenverlust                 | `--force-with-lease`; vor Finalisierung prüfen, dass nur conductor-Commits im Branch sind, sonst `needs_human` |
 | Stryker-Laufzeit                                                                     | Langsame PRs                 | Inkrementell im PR, vollständig nightly                                                                        |
 | Gate-Resume durch Unbefugte (Review von beliebigen Usern)                            | Unkontrollierter Fortschritt | Nur Reviews/Labels von Usern mit Write-Permission werden berücksichtigt                                        |
+| Guardrail-Assistent erkennt Sprache/Toolchain falsch                                 | Unpassende Werkzeuge         | Inventar am Gate sichtbar und korrigierbar; Beispiel-Repos pro Sprache als Tests                               |
+| Guardrail-PR zu groß / bricht bestehenden Build                                      | Ablehnung durch Entwickler   | Maßnahmen am Gate einzeln wählbar; `baseline`-Profil; Tester prüft `verify` vor Review                         |
+| Tool-Versionen der Sprach-Profile veralten                                           | Fehlerhafte Konfiguration    | Versionen im Katalog pinnen, Agent prüft aktuelle Doku (webfetch)                                              |
 
 Offene Punkte (vor der jeweiligen Phase zu klären):
 
 - Erledigt: OpenCode-Anbindung geklärt, siehe ADR 0012 (V2, `@opencode/client` 2.2.5, privater Server).
+- Erledigt: GitHub-Anbindung über die `gh`-CLI statt Octokit (ADR 0013).
 - Lizenz des Pakets (derzeit `UNLICENSED`) vor dem ersten npm-Release festlegen.
 - Erledigt: Reviewer hat standardmäßig keine Shell; Projekte erlauben gezielt Befehle über `roles.reviewer.permissions` (ADR 0012).
 - Phase 4: Mindestanforderungen an den Devcontainer des Ziel-Repos (welche Base-Images werden unterstützt).
@@ -916,7 +1048,9 @@ Offene Punkte (vor der jeweiligen Phase zu klären):
 - Paralleler Tester (eigener Worktree)
 - PO-Dialog mit Rückfragen
 - Copilot in CI
-- Weitere Forges (GitLab)
+- Weitere CI-Systeme (ADR 0014): Gitea Actions (weitgehend GitHub-kompatibel, Forge über `tea`), GitLab CI (kein nativer Label-Trigger, braucht Webhook → Pipeline-Trigger)
+- Optionaler Devcontainer im CI-Workflow (Input `devcontainer: true`, ggf. Devcontainer-Feature)
+- Weitere Forges (GitLab via `glab`): neuer Adapter `gitlab-cli` + Config-Option `forge` (ADR 0013); Gate-Semantik (Approvals, Labels) und CI-Integration separat klären
 - Kosten-/Laufzeit-Reporting über mehrere Runs
 - Lokale Isolation über eigenen Worktree pro Run (`workspace: worktree | in-place`, Default zunächst `in-place`): Repo des Nutzers bleibt frei, parallele Runs möglich. Voraussetzungen:
   - Run-Daten außerhalb des Arbeitsverzeichnisses (`.git/conductor/runs/<id>/`, Worktree z. B. unter `.git/conductor/worktrees/<id>/`), eigene ADR

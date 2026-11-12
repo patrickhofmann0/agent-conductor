@@ -1,6 +1,6 @@
 # 0008. Distribution: npm package, devcontainer feature, GitHub Action
 
-- Status: accepted
+- Status: accepted; CI parts (devcontainer feature, composite action) superseded by ADR 0014
 - Date: 2026-11-06
 - Plan references: D7, D8, D9, D10, D31, D32, D33, D34
 

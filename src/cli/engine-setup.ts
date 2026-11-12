@@ -12,10 +12,15 @@ import { createFileRunStore } from "../adapters/store/file-run-store.js";
 import { defaultEditor, editText } from "../adapters/terminal/editor.js";
 import { createTerminalReporter } from "../adapters/terminal/reporter.js";
 import { createTerminalGate } from "../adapters/terminal/terminal-gate.js";
+import { createForgeGateHandler } from "../core/forge/forge-gate.js";
+import { createForgePublisher } from "../core/forge/forge-publisher.js";
 
 import type { CliIo } from "./cli.types.js";
 import type { EngineContext } from "../core/pipeline/engine.types.js";
 import type { AgentRunner } from "../core/ports/agent-runner.types.js";
+import type { Forge } from "../core/ports/forge.types.js";
+import type { GateHandler } from "../core/ports/gate-handler.types.js";
+import type { Publisher } from "../core/ports/publisher.types.js";
 import type { Config } from "../core/schemas/config.js";
 
 interface AgentRuntime {
@@ -61,6 +66,36 @@ export interface EngineSetup {
   readonly io: CliIo;
   readonly config: Config;
   readonly openAgents: OpenAgents;
+  /** Publishes to pull requests when set; local branch only otherwise. */
+  readonly forge?: Forge | null;
+  /** Gates on pull request reviews instead of the terminal. */
+  readonly forgeGates?: boolean;
+}
+
+const NO_PUBLISHER: Publisher = { publish: () => Promise.resolve() };
+
+function forgeAdapters(
+  setup: EngineSetup,
+  vcs: GitVcs,
+  terminal: GateHandler,
+): { publisher: Publisher; gates: GateHandler } {
+  const { forge, config } = setup;
+  if (forge === undefined || forge === null) {
+    return { publisher: NO_PUBLISHER, gates: terminal };
+  }
+  const labels = config.github.labels;
+  return {
+    publisher: createForgePublisher({
+      forge,
+      push: () => vcs.push("origin"),
+      baseBranch: config.git.baseBranch,
+      needsHumanLabel: labels.needsHuman,
+    }),
+    gates:
+      setup.forgeGates === true
+        ? createForgeGateHandler({ forge, approvedLabel: labels.approved })
+        : terminal,
+  };
 }
 
 /** Wires the local adapters into the engine, runs `use` and cleans up. */
@@ -70,11 +105,12 @@ export async function withEngine<T>(
 ): Promise<T> {
   const { io, config } = setup;
   const vcs = createGitVcs(io.cwd);
-  const gates = createTerminalGate({
+  const terminal = createTerminalGate({
     input: io.stdin,
     output: stderrStream(io),
     edit: (template) => editText({ command: defaultEditor(io.env), template }),
   });
+  const { publisher, gates } = forgeAdapters(setup, vcs, terminal);
   const runtime = await setup.openAgents(io.cwd);
   try {
     const deps = {
@@ -86,13 +122,13 @@ export async function withEngine<T>(
         repository: io.cwd,
         archiveDirectory: archiveDirectory(io.env),
       }),
-      publisher: { publish: () => Promise.resolve() },
+      publisher,
       clock: { now: () => Date.now() },
       reporter: createTerminalReporter(io.stderr),
     };
     return await use({ deps, config }, vcs);
   } finally {
-    gates.close();
+    terminal.close();
     await runtime.close();
   }
 }

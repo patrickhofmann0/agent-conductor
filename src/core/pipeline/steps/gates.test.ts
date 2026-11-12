@@ -33,6 +33,8 @@ describe("productOwnerGateStep", () => {
         stage: "gate",
         title: "Add CSV export",
         body: renderGateBody("requirements.md", "REQ"),
+        branch: `conductor/${RUN_ID}-add-csv-export`,
+        issueRef: "o/r#42",
       },
     ]);
     expect(engine.gates.requests).toEqual([
@@ -41,6 +43,8 @@ describe("productOwnerGateStep", () => {
         gate: "po",
         artifactName: "requirements.md",
         artifact: "REQ",
+        branch: `conductor/${RUN_ID}-add-csv-export`,
+        since: 1_000_000,
       },
     ]);
   });
@@ -96,8 +100,22 @@ describe("productOwnerGateStep", () => {
         step: "po_gate",
         status: "waiting_for_gate",
         outcome: "Waiting for a human to approve requirements.md.",
+        gateOpenedAt: 1_000_000,
       }),
     );
+  });
+
+  it("keeps the opening time when resumed and clears it on a decision", async () => {
+    const engine = await engineWithDocuments();
+    engine.gates.decide("po", { kind: "pending" }, { kind: "approve" });
+    const waiting = newState({ step: "po_gate", gateOpenedAt: 500 });
+
+    const paused = await productOwnerGateStep(engine.ctx, waiting);
+    const approved = await productOwnerGateStep(engine.ctx, paused);
+
+    expect(engine.gates.requests.map((r) => r.since)).toEqual([500, 500]);
+    expect(paused.gateOpenedAt).toBe(500);
+    expect(approved.gateOpenedAt).toBeNull();
   });
 });
 
@@ -187,6 +205,8 @@ describe("finalGateStep", () => {
           "## Changed files",
           "- src/export.ts\n- test/export.test.ts",
         ].join("\n\n"),
+        branch: `conductor/${RUN_ID}-add-csv-export`,
+        since: 1_000_000,
       },
     ]);
     expect(engine.publisher.published[0]?.stage).toBe("gate");
