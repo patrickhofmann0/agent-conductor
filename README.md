@@ -46,15 +46,16 @@ conductor runs the same way locally (in a devcontainer) and in GitHub Actions.
 
 ## Documentation
 
-| You want to…                     | Read                                                                                       |
-| -------------------------------- | ------------------------------------------------------------------------------------------ |
-| Understand how conductor works   | [Concepts](docs/guide/concepts.md)                                                         |
-| Run conductor locally            | [Running locally](docs/guide/local-usage.md)                                               |
-| Configure conductor              | [Configuration reference](docs/guide/configuration.md)                                     |
-| Understand the decisions         | [Architecture decision records](docs/adr)                                                  |
-| See the roadmap                  | [Project plan](docs/PLAN.md) (German)                                                      |
-| Contribute                       | [CONTRIBUTING.md](CONTRIBUTING.md)                                                         |
-| Work on this repo with AI agents | [Working with agents](docs/contributing/working-with-agents.md) and [AGENTS.md](AGENTS.md) |
+| You want to…                        | Read                                                                                       |
+| ----------------------------------- | ------------------------------------------------------------------------------------------ |
+| Understand how conductor works      | [Concepts](docs/guide/concepts.md)                                                         |
+| Run conductor locally               | [Running locally](docs/guide/local-usage.md)                                               |
+| Install conductor in other projects | [Installing](docs/guide/install-local.md)                                                  |
+| Configure conductor                 | [Configuration reference](docs/guide/configuration.md)                                     |
+| Understand the decisions            | [Architecture decision records](docs/adr)                                                  |
+| See the roadmap                     | [Project plan](docs/PLAN.md) (German)                                                      |
+| Contribute                          | [CONTRIBUTING.md](CONTRIBUTING.md)                                                         |
+| Work on this repo with AI agents    | [Working with agents](docs/contributing/working-with-agents.md) and [AGENTS.md](AGENTS.md) |
 
 A getting-started guide for GitHub Actions follows with phases 3 and 4.
 
