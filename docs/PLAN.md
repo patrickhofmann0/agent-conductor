@@ -24,6 +24,11 @@ Das Ergebnis eines Laufs ist ein **Pull Request**.
 Das Projekt selbst wird **AI-first** entwickelt. Deshalb gilt für dieses Repo vom
 ersten Commit an ein Satz **harter, maschinell durchgesetzter Leitplanken** (Kapitel 9).
 
+Zusätzlich bietet conductor einen **Guardrail-Assistenten** (`conductor guardrails`,
+Abschnitt 4.5, ADR 0015): Er unterstützt Entwickler eines Ziel-Repos dabei, sichere
+Leitplanken und Quality Gates einzurichten – sprachübergreifend, von der Analyse bis
+zum umgesetzten Pull Request.
+
 ### Nicht-Ziele (v1)
 
 - Kein frei definierbarer Workflow-Graph, keine eigenen Rollen (Phasen sind fest).
@@ -74,6 +79,7 @@ ersten Commit an ein Satz **harter, maschinell durchgesetzter Leitplanken** (Kap
 | D34 | Sprache                  | Prompts Englisch, Artefakte/PR-Texte in konfigurierbarer Sprache                                                                                         |
 | D35 | Linter                   | ESLint (typed) + Prettier                                                                                                                                |
 | D36 | Hosting                  | GitHub, mit Branch Protection und CODEOWNERS                                                                                                             |
+| D37 | Guardrail-Assistent      | Eigener Modus `conductor guardrails` in v1: Analyse, Gap-Analyse, Vorschlag, Umsetzung als PR; mehrsprachig über Sprach-Profile (ADR 0015)               |
 
 Jede dieser Entscheidungen wird in Phase 0 als ADR in `docs/adr/` festgehalten.
 
@@ -204,6 +210,11 @@ interface Forge {
   listComments(ref: PullRequestRef, since: number): Promise<Comment[]>;
   closingReference(ref: IssueRef): string;
 }
+interface RepoInspector {
+  // read-only, used by the guardrail assistant (4.5)
+  listFiles(globs: string[]): Promise<string[]>;
+  readFile(path: string): Promise<string>;
+}
 interface Clock {
   now(): Date;
 }
@@ -277,19 +288,67 @@ Ein `approve` bei roten Pflicht-Checks wird vom Framework **überschrieben** zu
 | `fail`               | Run-Status `failed`, Exit-Code ≠ 0, Branch bleibt mit Zwischencommits erhalten           |
 | `ask`                | Lokal: Terminal-Prompt (weitere N Iterationen / draft_pr / abort). CI: wie `draft_pr`    |
 
+### 4.5 Guardrail-Assistent (`conductor guardrails`, ADR 0015)
+
+Eigene Pipeline neben der Feature-Pipeline. Ziel: Entwickler eines Ziel-Repos beim
+Aufbau sicherer Leitplanken und Quality Gates unterstützen, bevor dort Agents arbeiten.
+
+1. **Analyse** (Guardrail-Analyst, read-only): erkennt Sprachen, Build-Tools,
+   Testframeworks, CI, vorhandene Linter/Hooks – pro Teilprojekt (Monorepos).
+   Ergebnis: `inventory.json` (Schema-validiert).
+2. **Gap-Analyse:** Abgleich des Inventars mit dem Leitplanken-Katalog (s. u.) im
+   gewählten Profil (`baseline` | `strict`). Rein in `core`, deterministisch.
+3. **Vorschlag:** `guardrails-proposal.md` mit priorisierten Maßnahmen und Begründung
+   sowie Vorschlag für `checks` und `guardrails.paths` in `conductor.yaml`.
+4. **Gate** (immer aktiv): Mensch wählt Maßnahmen aus (approve / revise / abort).
+5. **Umsetzung:** Coder richtet die Werkzeuge ein, Tester prüft, dass das neue
+   `verify`-Kommando läuft und tatsächlich Fehler erkennt (z. B. absichtlicher Verstoß).
+6. **Review:** Reviewer prüft gezielt auf Abschwächung (gesenkte Schwellen, Ausnahmen,
+   nicht ausgeführte Checks). Ergebnis ist ein eigener PR mit Label `guardrails-change`,
+   der keinen Produktcode ändert.
+
+Zustände:
+
+```text
+created → gr_analyzing → gr_gap_analysis → gr_gate
+        → iter_coder → iter_tester → iter_checks → iter_review
+        → finalizing → done
+```
+
+**Leitplanken-Katalog:** sprachunabhängiger Kern (ein `verify`-Kommando, Git-Hooks,
+Branch-Protection, Schutz der Leitplanken-Dateien, `AGENTS.md`, Coverage- und
+Mutationsschwellen) plus **Sprach-Profile**, die jedes Gate auf konkrete Werkzeuge abbilden:
+
+| Gate        | TypeScript/JS      | Python              | Go                 | Java/Kotlin       |
+| ----------- | ------------------ | ------------------- | ------------------ | ----------------- |
+| Typen       | tsc strict         | mypy/pyright strict | Compiler, `go vet` | Compiler          |
+| Lint/Format | ESLint, Prettier   | ruff                | golangci-lint      | Checkstyle/detekt |
+| Architektur | dependency-cruiser | import-linter       | go-arch-lint       | ArchUnit          |
+| Dead Code   | knip               | vulture             | deadcode           | (IDE/Lint-Regeln) |
+| Coverage    | Vitest/Jest        | pytest-cov          | `go test -cover`   | JaCoCo            |
+| Mutation    | Stryker            | mutmut              | gremlins           | PIT               |
+
+Der Katalog ist **Daten** (zod-Schema in `core/schemas`), kein Code; neue Sprachen
+kommen ohne Änderung der Kernlogik hinzu.
+
+Sicherheitsregeln: Analyse ist read-only; Schreibrechte erst nach dem Gate; bestehende
+Gates dürfen nur verschärft, nie abgeschwächt werden (Verstoß → Finding `severity: high`);
+Integritätsprüfung (5.3) gilt unverändert.
+
 ---
 
 ## 5. Rollen, Rechte und Sicherheit
 
 ### 5.1 Rollen
 
-| Rolle        | Input                                                            | Output (Datei in `.conductor/runs/<id>/`)                                                           | Rechte                                         |
-| ------------ | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| **PO**       | Issue/Freitext, Repo (read)                                      | `requirements.md`: Ziel, User Stories, Akzeptanzkriterien, Nicht-Ziele, **offene Fragen**, Annahmen | read-only, webfetch                            |
-| **Planner**  | requirements.md, Repo                                            | `plan.md`: betroffene Dateien, Schritte, Teststrategie, Risiken, Leitplanken-Vorschläge             | read-only, webfetch                            |
-| **Coder**    | requirements, plan, ggf. Review-Findings                         | Codeänderungen, `coder-notes.md`                                                                    | edit, bash (ohne git), keine Leitplanken-Pfade |
-| **Tester**   | requirements, plan, Diff, ggf. Findings                          | Tests, statische Regeln, CI-Checks, `tester-notes.md`                                               | edit, bash (ohne git)                          |
-| **Reviewer** | requirements, plan, Diff, Check-Ergebnisse, Leitplanken-Verstöße | `review-<n>.json`                                                                                   | read-only, bash nur lesend                     |
+| Rolle                 | Input                                                            | Output (Datei in `.conductor/runs/<id>/`)                                                           | Rechte                                         |
+| --------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| **PO**                | Issue/Freitext, Repo (read)                                      | `requirements.md`: Ziel, User Stories, Akzeptanzkriterien, Nicht-Ziele, **offene Fragen**, Annahmen | read-only, webfetch                            |
+| **Planner**           | requirements.md, Repo                                            | `plan.md`: betroffene Dateien, Schritte, Teststrategie, Risiken, Leitplanken-Vorschläge             | read-only, webfetch                            |
+| **Coder**             | requirements, plan, ggf. Review-Findings                         | Codeänderungen, `coder-notes.md`                                                                    | edit, bash (ohne git), keine Leitplanken-Pfade |
+| **Tester**            | requirements, plan, Diff, ggf. Findings                          | Tests, statische Regeln, CI-Checks, `tester-notes.md`                                               | edit, bash (ohne git)                          |
+| **Reviewer**          | requirements, plan, Diff, Check-Ergebnisse, Leitplanken-Verstöße | `review-<n>.json`                                                                                   | read-only, bash nur lesend                     |
+| **Guardrail-Analyst** | Repo (read), Leitplanken-Katalog                                 | `inventory.json`, `guardrails-proposal.md` (nur im Modus `guardrails`, 4.5)                         | read-only, webfetch                            |
 
 ### 5.2 OpenCode-Permissions (ADR 0012)
 
@@ -400,6 +459,10 @@ guardrails:
     - "eslint.config.*"
     - ".dependency-cruiser.*"
     - ".github/workflows/**"
+  assistant: # nur für `conductor guardrails` (4.5)
+    profile: strict # baseline | strict
+    languages: [auto] # auto | typescript | python | go | java | kotlin
+    exclude: ["vendor/**"]
 
 git:
   baseBranch: main
@@ -885,6 +948,21 @@ Akzeptanzkriterien:
 - „Request changes" am Plan führt zu überarbeitetem Plan
 - Events, die conductor nicht betreffen, beenden den Job in wenigen Sekunden mit `skip`
 
+### Phase 5a – Tarball-Release (ohne npm, vorziehbar)
+
+**Ziel:** conductor lässt sich ohne Bun und ohne npm-Publish in anderen Projekten
+installieren, auch bevor Phase 4 (CI) und Keys verfügbar sind.
+
+Aufgaben:
+
+- [ ] Release-Workflow (`.github/workflows/release-tarball.yml`), getriggert durch Tag `v*`: `verify`, Version aus dem Tag setzen, `npm pack`, Install-Test des Tarballs unter Node 22 (`conductor --version`), Tarball an GitHub Release anhängen. **Eigener PR mit Label `guardrails-change`**, ohne Änderungen an `src/` und `test/`
+- [ ] Doku `docs/guide/install-local.md`: Installation aus Release (`gh release download`, `npm i -g ./agent-conductor-<version>.tgz`) und Entwicklungsweg via `bun link`; lokaler Lauf mit Copilot-Login ohne API-Key
+
+Akzeptanzkriterien:
+
+- Das Tarball installiert unter Node 22 ohne Bun, `conductor --version` läuft
+- Ein Tag erzeugt ein Release mit angehängtem `.tgz`
+
 ### Phase 5 – E2E & Release
 
 **Ziel:** Veröffentlichtes, dokumentiertes v1.0.
@@ -913,6 +991,28 @@ Aufgaben:
 - [ ] Erste Features (Backlog, Kapitel 12) über conductor umsetzen
 - [ ] Learnings → Prompt-Verbesserungen, ADRs
 
+### Phase 7 – Guardrail-Assistent
+
+**Ziel:** `conductor guardrails` richtet in beliebigen Ziel-Repos sichere Leitplanken
+und Quality Gates ein (4.5, ADR 0015).
+
+Aufgaben:
+
+- [ ] Schemas: Leitplanken-Katalog, Sprach-Profile, `inventory.json`, Config-Block `guardrails.assistant`
+- [ ] Port `RepoInspector` + Adapter (Dateisystem) + Fake
+- [ ] Core: Gap-Analyse (Inventar × Katalog × Profil → priorisierte Maßnahmen), Abschwächungs-Erkennung
+- [ ] Rolle Guardrail-Analyst mit Default-Prompt; Pipeline-Zustände `gr_*`
+- [ ] Sprach-Profile TypeScript/JS, Python, Go, Java/Kotlin
+- [ ] CLI `conductor guardrails [--profile] [--report-only]`, Gate lokal und in CI
+- [ ] Doku in `docs/` (Nutzung, Katalog erweitern)
+
+Akzeptanzkriterien:
+
+- Je ein Beispiel-Repo pro Sprache: Lauf erzeugt PR, dessen `verify` grün ist und einen eingebauten Verstoß erkennt
+- Monorepo mit zwei Sprachen wird pro Teilprojekt korrekt behandelt
+- `--report-only` ändert keine Dateien
+- Versuchte Abschwächung eines bestehenden Gates führt zu einem `high`-Finding
+
 ---
 
 ## 11. Risiken & offene Punkte
@@ -927,6 +1027,9 @@ Aufgaben:
 | Force-Push überschreibt menschliche Commits im PR                                    | Datenverlust                 | `--force-with-lease`; vor Finalisierung prüfen, dass nur conductor-Commits im Branch sind, sonst `needs_human` |
 | Stryker-Laufzeit                                                                     | Langsame PRs                 | Inkrementell im PR, vollständig nightly                                                                        |
 | Gate-Resume durch Unbefugte (Review von beliebigen Usern)                            | Unkontrollierter Fortschritt | Nur Reviews/Labels von Usern mit Write-Permission werden berücksichtigt                                        |
+| Guardrail-Assistent erkennt Sprache/Toolchain falsch                                 | Unpassende Werkzeuge         | Inventar am Gate sichtbar und korrigierbar; Beispiel-Repos pro Sprache als Tests                               |
+| Guardrail-PR zu groß / bricht bestehenden Build                                      | Ablehnung durch Entwickler   | Maßnahmen am Gate einzeln wählbar; `baseline`-Profil; Tester prüft `verify` vor Review                         |
+| Tool-Versionen der Sprach-Profile veralten                                           | Fehlerhafte Konfiguration    | Versionen im Katalog pinnen, Agent prüft aktuelle Doku (webfetch)                                              |
 
 Offene Punkte (vor der jeweiligen Phase zu klären):
 
