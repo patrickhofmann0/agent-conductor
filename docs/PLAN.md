@@ -955,8 +955,8 @@ installieren, auch bevor Phase 4 (CI) und Keys verfügbar sind.
 
 Aufgaben:
 
-- [ ] Release-Workflow (`.github/workflows/release-tarball.yml`), getriggert durch Tag `v*`: `verify`, Version aus dem Tag setzen, `npm pack`, Install-Test des Tarballs unter Node 22 (`conductor --version`), Tarball an GitHub Release anhängen. **Eigener PR mit Label `guardrails-change`**, ohne Änderungen an `src/` und `test/`
-- [ ] Doku `docs/guide/install-local.md`: Installation aus Release (`gh release download`, `npm i -g ./agent-conductor-<version>.tgz`) und Entwicklungsweg via `bun link`; lokaler Lauf mit Copilot-Login ohne API-Key
+- [x] Release-Workflow (`.github/workflows/release-tarball.yml`), getriggert durch Tag `v*`: `verify`, Version aus dem Tag setzen, `npm pack`, Install-Test des Tarballs unter Node 22 (`conductor --version`), Tarball an GitHub Release anhängen. **Eigener PR mit Label `guardrails-change`**, ohne Änderungen an `src/` und `test/`
+- [x] Doku `docs/guide/install-local.md`: Installation aus Release (`gh release download`, `npm i -g ./agent-conductor-<version>.tgz`) und Entwicklungsweg via `bun link`; lokaler Lauf mit Copilot-Login ohne API-Key
 
 Akzeptanzkriterien:
 
